@@ -62,8 +62,20 @@ def retry_due() -> None:
 		pluck="name",
 	)
 	for name in due:
-		upload(name)
+		try:
+			upload(name)
+		except Exception as error:
+			frappe.db.rollback()
+			frappe.log_error(
+				title="DATEV document upload failed", reference_doctype=DOCUMENT, reference_name=name
+			)
+			mark_stuck(name, str(error))
 		frappe.db.commit()
+
+
+def mark_stuck(name: str, message: str) -> None:
+	frappe.db.set_value(DOCUMENT, name, {"status": "Stuck", "next_attempt": None, "message": message})
+	log_event(DOCUMENT, name, "upload_failed", message)
 
 
 @frappe.whitelist()

@@ -173,6 +173,30 @@ class TestDocuments(IntegrationTestCase):
 			["Uploaded", "Pending", "Pending", "Uploaded"],
 		)
 
+	def test_retry_due_isolates_unexpected_errors(self):
+		broken, _enqueue = upsert(self.client_doc)
+		healthy, _enqueue = upsert(self.client_doc)
+		past = add_to_date(now_datetime(), minutes=-1)
+		for name in (broken, healthy):
+			frappe.db.set_value("DATEV Document", name, "next_attempt", past)
+		original = FakeStorage.upload
+
+		def upload(self, document):
+			if document.name == broken:
+				raise RuntimeError("boom")
+			return original(self, document)
+
+		with (
+			patch.object(FakeStorage, "upload", upload),
+			patch("frappe.db.commit"),
+			patch("frappe.db.rollback"),
+		):
+			documents.retry_due()
+		self.assertEqual(frappe.db.get_value("DATEV Document", healthy, "status"), "Uploaded")
+		self.assertEqual(
+			frappe.db.get_value("DATEV Document", broken, ["status", "message"]), ("Stuck", "boom")
+		)
+
 	def test_discard_before_upload(self):
 		name, _enqueue = upsert(self.client_doc, "SINV-DISCARD")
 		document = frappe.get_doc("DATEV Document", name)

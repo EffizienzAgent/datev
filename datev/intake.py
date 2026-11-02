@@ -80,7 +80,9 @@ def replace_file(document, file_name: str, content: bytes) -> None:
 
 
 def discard_document(source_key: str) -> None:
-	document = frappe.get_doc(DOCUMENT, {"source_key": source_key})
+	name = frappe.db.get_value(DOCUMENT, {"source_key": source_key}, "name")
+	frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
+	document = frappe.get_doc(DOCUMENT, name)
 	if document.status in ("Uploaded", "No Link"):
 		frappe.throw(_("The document is already in DATEV. Create a cancellation invoice instead."))
 	if document.status == "Discarded":
