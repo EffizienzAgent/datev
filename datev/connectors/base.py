@@ -5,10 +5,13 @@ import frappe
 
 
 class ConnectorError(Exception):
-	def __init__(self, message: str, *, retryable: bool = False, response: object = None):
+	def __init__(
+		self, message: str, *, retryable: bool = False, response: object = None, nothing_sent: bool = False
+	):
 		super().__init__(message)
 		self.retryable = retryable
 		self.response = response
+		self.nothing_sent = nothing_sent
 
 
 @dataclass
@@ -57,6 +60,7 @@ class StorageConnector(Connector, ABC):
 
 class ExportConnector(Connector, ABC):
 	final_status: str = "Transferred"
+	remote: bool = True
 
 	@abstractmethod
 	def export(self, batch, bookings: list) -> ExportResult: ...

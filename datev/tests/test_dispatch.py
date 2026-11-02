@@ -322,7 +322,7 @@ class TestDispatch(IntegrationTestCase):
 
 	def test_connector_exception_resets_bookings(self):
 		booking = self.booking()
-		FakeExport.error = ConnectorError("DATEV unavailable", response={"error": "down"})
+		FakeExport.error = ConnectorError("DATEV unavailable", response={"error": "down"}, nothing_sent=True)
 		batch = dispatch.collect(self.client_doc.name)
 		with patch("frappe.db.rollback"):
 			dispatch.send(batch)
@@ -338,6 +338,32 @@ class TestDispatch(IntegrationTestCase):
 		FakeExport.error = None
 		dispatch.send(dispatch.collect(self.client_doc.name))
 		self.assertEqual(self.status(booking), "Exported")
+
+	def test_connector_exception_after_sending_keeps_batch_sending(self):
+		booking = self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		for error in (ConnectorError("lost"), RuntimeError("crash")):
+			with self.subTest(error=error):
+				frappe.db.set_value("DATEV Batch", batch, "status", "Approved")
+				FakeExport.error = error
+				with patch("frappe.db.rollback"), patch("frappe.log_error"):
+					dispatch.send(batch)
+				status, message = frappe.db.get_value("DATEV Batch", batch, ["status", "message"])
+				self.assertEqual(status, "Sending")
+				self.assertIn("uncertain", message)
+				self.assertIn(str(error), message)
+				self.assertEqual(
+					frappe.db.get_value("DATEV Booking", booking, ["status", "batch"]), ("Batched", batch)
+				)
+		FakeExport.error = None
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+
+	def test_send_uses_connector_recorded_on_batch(self):
+		self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		self.client_doc.db_set("export_connector", "DATEVconnect")
+		dispatch.send(batch)
+		self.assertEqual(len(FakeExport.calls), 1)
 
 	def test_send_now_ignores_schedule(self):
 		self.client_doc.db_set({"dispatch_frequency": "Monthly", "last_dispatch_on": frappe.utils.now()})

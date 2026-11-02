@@ -16,6 +16,7 @@ from datev.extf.format import yyyymmdd
 
 class ExtfDownloadExport(ExportConnector):
 	final_status = "Exported"
+	remote = False
 
 	def export(self, batch, bookings: list) -> ExportResult:
 		files = self.build_files(batch, bookings)

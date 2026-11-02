@@ -169,10 +169,12 @@ class TestDATEVconnectExport(IntegrationTestCase):
 		}
 		with patch(f"{API}.post_proposals", return_value=response):
 			result = DATEVconnectExport(self.client).export(self.batch, bookings)
-		self.assertEqual([item.ok for item in result.items], [False, False, True])
+		self.assertEqual(
+			[(item.booking, item.ok) for item in result.items],
+			[(bookings[0].name, False), (bookings[2].name, True)],
+		)
 		self.assertEqual(result.items[0].message, "REW00544: Konto fehlt; X: Zweiter Grund")
-		self.assertTrue(result.items[1].message)
-		self.assertEqual(result.items[2].booking, bookings[2].name)
+		self.assertEqual(result.uncertain, [bookings[1].name])
 
 	def test_failed_call_marks_group(self):
 		bookings = [self.booking("2026-12-30"), self.booking("2027-01-05")]
@@ -248,12 +250,71 @@ class TestDATEVconnectExport(IntegrationTestCase):
 		lookup.assert_called_once_with(55003, 29098)
 		self.assertEqual(frappe.db.get_value("DATEV Client", client.name, "dc_client_id"), CLIENT_ID)
 
-	def test_payments_rejected(self):
-		booking = self.booking("2027-01-05")
-		booking.kind = "Payment"
-		with patch(f"{API}.post_proposals") as post:
-			with self.assertRaises(ConnectorError):
-				DATEVconnectExport(self.client).export(self.batch, [booking])
+	def test_payments_fail_per_item(self):
+		payment = self.booking("2027-01-05")
+		payment.kind = "Payment"
+		invoice = self.booking("2027-01-06")
+		with patch(f"{API}.post_proposals", return_value={"succeeded": [{"index": "0"}]}) as post:
+			result = DATEVconnectExport(self.client).export(self.batch, [payment, invoice])
+		post.assert_called_once()
+		self.assertEqual(
+			[(item.booking, item.ok, item.message) for item in result.items],
+			[(payment.name, False, "Payments are not supported yet"), (invoice.name, True, "")],
+		)
+
+	def test_unexpected_bodies_are_uncertain(self):
+		bookings = [self.booking("2027-01-05"), self.booking("2027-01-06")]
+		for body in (
+			[{"index": "0"}],
+			None,
+			{"succeeded": [{"index": "0"}], "failed": []},
+			{"succeeded": "x"},
+		):
+			with self.subTest(body=body), patch(f"{API}.post_proposals", return_value=body):
+				result = DATEVconnectExport(self.client).export(self.batch, bookings)
+				known = {item.booking for item in result.items}
+				expected = (
+					{bookings[0].name} if body == {"succeeded": [{"index": "0"}], "failed": []} else set()
+				)
+				self.assertEqual(known, expected)
+				self.assertEqual(set(result.uncertain), {b.name for b in bookings} - expected)
+
+	def test_empty_body_from_http_is_uncertain(self):
+		bookings = [self.booking("2027-01-05")]
+		with patch("datev.http.requests.request", return_value=fake_response(201, None, "")):
+			result = DATEVconnectExport(self.client).export(self.batch, bookings)
+		self.assertEqual((result.items, result.uncertain), ([], [bookings[0].name]))
+
+	def test_exception_after_first_post(self):
+		first, second, third = (self.booking(d) for d in ("2026-12-30", "2027-01-05", "2027-01-07"))
+		third_kind = self.booking("2027-01-08", kind="Incoming Invoice")
+		calls = []
+
+		def post(client_id, fiscal_year_id, direction, items):
+			calls.append((fiscal_year_id, direction))
+			if len(calls) == 2:
+				raise RuntimeError("boom")
+			return {"succeeded": [{"index": str(i)} for i in range(len(items))], "failed": []}
+
+		with patch(f"{API}.post_proposals", side_effect=post), patch("frappe.log_error"):
+			result = DATEVconnectExport(self.client).export(self.batch, [first, second, third, third_kind])
+		self.assertEqual(len(calls), 2)
+		self.assertEqual(sorted(result.uncertain), sorted([second.name, third.name]))
+		self.assertEqual(
+			[(item.booking, item.ok) for item in result.items], [(first.name, True), (third_kind.name, False)]
+		)
+		self.assertEqual(result.items[1].message, "Not sent because an earlier request failed.")
+
+	def test_failure_before_any_post_signals_nothing_sent(self):
+		client = dc_client(dc_client_id=None)
+		bookings = [make_booking(make_document(client), make_party_account(client, account_number=10002))]
+		with (
+			patch(f"{API}.client_id_for", side_effect=DATEVconnectError("down", retryable=True)),
+			patch(f"{API}.post_proposals") as post,
+		):
+			with self.assertRaises(ConnectorError) as raised:
+				DATEVconnectExport(client).export(make_batch(client), bookings)
+		self.assertTrue(raised.exception.nothing_sent)
 		post.assert_not_called()
 
 

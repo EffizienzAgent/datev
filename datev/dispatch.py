@@ -175,12 +175,16 @@ def send(batch: str) -> None:
 	frappe.db.commit()
 
 	batch_doc = frappe.get_doc(BATCH, batch)
+	connector = None
 	try:
-		connector = registry.get_export(frappe.get_doc(CLIENT, batch_doc.client))
+		connector = registry.get_export(frappe.get_doc(CLIENT, batch_doc.client), batch_doc.export_connector)
 		result = connector.export(batch_doc, bookings)
 	except Exception as error:
 		frappe.db.rollback()
-		reset(batch, bookings, error)
+		if connector is None or not connector.remote or getattr(error, "nothing_sent", False):
+			reset(batch, bookings, error)
+		else:
+			keep_uncertain(batch, error)
 	else:
 		record(batch, bookings, connector.final_status, result)
 	frappe.db.commit()
@@ -202,6 +206,14 @@ def reset(batch: str, bookings: list, error: Exception) -> None:
 		booking.db_set({"status": "Pending", "batch": None, "message": str(error)})
 	frappe.db.set_value(BATCH, batch, {"status": "Failed", "message": str(error), "sent_on": now_datetime()})
 	log_event(BATCH, batch, "failed", str(error), getattr(error, "response", None))
+
+
+def keep_uncertain(batch: str, error: Exception) -> None:
+	if not isinstance(error, ConnectorError):
+		frappe.log_error(title="DATEV export failed", reference_doctype=BATCH, reference_name=batch)
+	message = _("Delivery to DATEV is uncertain. Check DATEV, then resolve the batch.")
+	frappe.db.set_value(BATCH, batch, "message", f"{message}\n{error}")
+	log_event(BATCH, batch, "delivery_uncertain", str(error), getattr(error, "response", None))
 
 
 def record(batch: str, bookings: list, final_status: str, result) -> None:

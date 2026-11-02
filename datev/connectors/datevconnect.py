@@ -73,21 +73,27 @@ def messages(entry: dict) -> str:
 	)
 
 
-def item_results(bookings: list, response: dict | None) -> list[ExportItemResult]:
-	response = response or {}
-	succeeded = {str(entry.get("index")): entry for entry in response.get("succeeded") or []}
-	failed = {str(entry.get("index")): entry for entry in response.get("failed") or []}
-	results = []
+def item_results(bookings: list, response) -> tuple[list[ExportItemResult], list[str]]:
+	everything = [booking.name for booking in bookings]
+	if not isinstance(response, dict):
+		return [], everything
+	try:
+		succeeded = {str(entry.get("index")): messages(entry) for entry in response.get("succeeded") or []}
+		failed = {str(entry.get("index")): messages(entry) for entry in response.get("failed") or []}
+	except AttributeError, TypeError:
+		return [], everything
+	results, uncertain = [], []
 	for index, booking in enumerate(bookings):
 		key = str(index)
 		if key in succeeded:
-			results.append(ExportItemResult(booking.name, True, messages(succeeded[key])))
+			results.append(ExportItemResult(booking.name, True, succeeded[key]))
 		elif key in failed:
-			message = messages(failed[key]) or _("Rejected by DATEVconnect.")
-			results.append(ExportItemResult(booking.name, False, message))
+			results.append(
+				ExportItemResult(booking.name, False, failed[key] or _("Rejected by DATEVconnect."))
+			)
 		else:
-			results.append(ExportItemResult(booking.name, False, _("No result returned by DATEVconnect.")))
-	return results
+			uncertain.append(booking.name)
+	return results, uncertain
 
 
 class DATEVconnectMixin:
@@ -109,17 +115,23 @@ class DATEVconnectMixin:
 
 class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 	def export(self, batch, bookings: list) -> ExportResult:
-		if any(booking.kind not in DIRECTIONS for booking in bookings):
-			raise ConnectorError(_("Payments are not supported yet"))
-		api = self.api()
-		client_id = self.client_id(api)
-		documents = self.load("DATEV Document", {booking.document for booking in bookings})
-		parties = self.load("DATEV Party Account", {booking.party_account for booking in bookings})
+		try:
+			api = self.api()
+			client_id = self.client_id(api)
+			documents = self.load("DATEV Document", {booking.document for booking in bookings})
+			parties = self.load("DATEV Party Account", {booking.party_account for booking in bookings})
+		except ConnectorError as error:
+			error.nothing_sent = True
+			raise
+		except Exception as error:
+			raise ConnectorError(str(error), nothing_sent=True) from error
 
 		results = {}
 		groups = {}
 		for booking in bookings:
 			try:
+				if booking.kind not in DIRECTIONS:
+					raise ConnectorError(_("Payments are not supported yet"))
 				item = proposal_item(
 					booking, documents.get(booking.document), parties.get(booking.party_account), self.client
 				)
@@ -130,23 +142,38 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 
 		responses = []
 		uncertain = []
-		for (fiscal_year, direction), entries in groups.items():
+		queue = list(groups.items())
+		for position, ((fiscal_year, direction), entries) in enumerate(queue):
 			group = [booking for booking, _item in entries]
 			try:
 				response = api.post_proposals(
 					client_id, fiscal_year, direction, [item for _b, item in entries]
 				)
+				responses.append(response)
+				mapped, unmapped = item_results(group, response)
 			except DATEVconnectError as e:
+				responses.append({"error": str(e), "response": e.response})
 				if e.maybe_sent or (e.status or 0) >= 500:
 					uncertain.extend(booking.name for booking in group)
-					responses.append({"error": str(e), "response": e.response})
-					continue
-				results.update(
-					{booking.name: ExportItemResult(booking.name, False, str(e)) for booking in group}
-				)
+				else:
+					results.update(
+						{booking.name: ExportItemResult(booking.name, False, str(e)) for booking in group}
+					)
 				continue
-			responses.append(response)
-			results.update({result.booking: result for result in item_results(group, response)})
+			except Exception as e:
+				frappe.log_error(
+					title="DATEVconnect export failed",
+					reference_doctype="DATEV Batch",
+					reference_name=batch.name,
+				)
+				responses.append({"error": str(e)})
+				uncertain.extend(booking.name for booking in group)
+				not_sent = _("Not sent because an earlier request failed.")
+				for _key, rest in queue[position + 1 :]:
+					results.update({b.name: ExportItemResult(b.name, False, not_sent) for b, _item in rest})
+				break
+			results.update({result.booking: result for result in mapped})
+			uncertain.extend(unmapped)
 		return ExportResult(
 			items=[results[booking.name] for booking in bookings if booking.name in results],
 			response=responses,
