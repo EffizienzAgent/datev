@@ -3,9 +3,10 @@ from unittest.mock import patch
 import frappe
 import requests
 from frappe.tests import IntegrationTestCase
+from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 from datev.clients.datevconnect import DATEVconnectError
-from datev.connectors.base import ConnectorError, DeliveryUncertain
+from datev.connectors.base import ConnectorError
 from datev.connectors.datevconnect import DATEVconnectExport, DATEVconnectMasterData, proposal_item
 from datev.connectors.extf import ExtfDownloadExport, ExtfEmailExport, ExtfMasterData
 from datev.tests.factories import make_booking, make_client, make_document, make_party_account
@@ -187,20 +188,33 @@ class TestDATEVconnectExport(IntegrationTestCase):
 			[(i.ok, i.message) for i in result.items], [(False, "Fiscal year locked"), (True, "")]
 		)
 
-	@patch("datev.http.requests.request")
-	def test_uncertain_delivery_raises(self, request):
-		bookings = [self.booking("2027-01-05")]
+	def test_uncertain_group_does_not_stop_others(self):
+		first, second, third = (self.booking(d) for d in ("2026-12-30", "2027-01-05", "2027-01-06"))
+		later = self.booking("2027-01-07", kind="Incoming Invoice")
 		for outcome in (requests.ReadTimeout("read timed out"), fake_response(502, None, "Bad Gateway")):
-			with self.subTest(outcome=outcome):
-				request.side_effect = outcome if isinstance(outcome, Exception) else None
-				request.return_value = outcome
-				with self.assertRaises(DeliveryUncertain):
-					DATEVconnectExport(self.client).export(self.batch, bookings)
+
+			def request(method, url, outcome=outcome, **kwargs):
+				if "/20270101/posting-proposals-outgoing" in url:
+					if isinstance(outcome, Exception):
+						raise outcome
+					return outcome
+				return fake_response(201, {"succeeded": [{"index": "0"}], "failed": []})
+
+			with self.subTest(outcome=outcome), patch("datev.http.requests.request", side_effect=request):
+				result = DATEVconnectExport(self.client).export(self.batch, [first, second, third, later])
+				self.assertEqual(sorted(result.uncertain), sorted([second.name, third.name]))
+				self.assertEqual(
+					[(item.booking, item.ok) for item in result.items],
+					[(first.name, True), (later.name, True)],
+				)
 
 	@patch("datev.http.requests.request")
 	def test_connection_error_marks_items_failed(self, request):
 		bookings = [self.booking("2027-01-05")]
-		for error in (requests.ConnectionError("refused"), requests.ConnectTimeout("connect timed out")):
+		refused = requests.ConnectionError(
+			MaxRetryError(None, "/", reason=NewConnectionError(None, "refused"))
+		)
+		for error in (refused, requests.ConnectTimeout("connect timed out")):
 			with self.subTest(error=error):
 				request.side_effect = error
 				result = DATEVconnectExport(self.client).export(self.batch, bookings)

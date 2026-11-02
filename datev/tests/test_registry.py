@@ -40,6 +40,35 @@ class TestHttp(IntegrationTestCase):
 		self.assertIsNone(result.data)
 		self.assertEqual(result.status, 500)
 
+	def test_http_maybe_sent(self):
+		from http.client import RemoteDisconnected
+
+		from urllib3.exceptions import MaxRetryError, NameResolutionError, NewConnectionError, ProtocolError
+
+		def wrapped(reason):
+			return requests.ConnectionError(MaxRetryError(None, "/", reason=reason))
+
+		cases = [
+			(requests.ConnectTimeout("connect timed out"), False),
+			(requests.exceptions.SSLError("bad certificate"), False),
+			(wrapped(NewConnectionError(None, "refused")), False),
+			(wrapped(NameResolutionError("host", None, "unknown")), False),
+			(
+				requests.ConnectionError(ProtocolError("Connection aborted.", RemoteDisconnected("closed"))),
+				True,
+			),
+			(wrapped(ProtocolError("Connection aborted.")), True),
+			(requests.ConnectionError("unknown"), True),
+			(requests.ReadTimeout("read timed out"), True),
+			(requests.exceptions.ChunkedEncodingError("broken"), True),
+		]
+		for error, expected in cases:
+			with self.subTest(error=type(error).__name__, expected=expected):
+				with patch("datev.http.requests.request", side_effect=error):
+					with self.assertRaises(http.TransportError) as raised:
+						http.request("POST", "https://example.test")
+				self.assertIs(raised.exception.maybe_sent, expected)
+
 	def test_http_transport_error(self):
 		with patch("datev.http.requests.request", side_effect=requests.ConnectionError("boom")):
 			with self.assertRaises(http.TransportError):

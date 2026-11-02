@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import getdate, now_datetime
 
 from datev.connectors import registry
-from datev.connectors.base import ConnectorError, DeliveryUncertain
+from datev.connectors.base import ConnectorError
 from datev.events import log_event
 from datev.intake import BOOKING, OPEN_BOOKING_STATUSES
 from datev.parties import ensure_in_datev, set_status
@@ -139,7 +139,9 @@ def send(batch: str) -> None:
 		return
 	bookings = batched(batch)
 	if not bookings:
-		frappe.db.set_value(BATCH, batch, {"status": "Sent", "sent_on": now_datetime()})
+		message = _("No bookings left to send.")
+		frappe.db.set_value(BATCH, batch, {"status": "Sent", "message": message, "sent_on": now_datetime()})
+		log_event(BATCH, batch, "sent", message)
 		return
 	frappe.db.set_value(BATCH, batch, "status", "Sending")
 	frappe.db.commit()
@@ -148,11 +150,6 @@ def send(batch: str) -> None:
 	try:
 		connector = registry.get_export(frappe.get_doc(CLIENT, batch_doc.client))
 		result = connector.export(batch_doc, bookings)
-	except DeliveryUncertain as error:
-		frappe.db.rollback()
-		message = _("Delivery to DATEV is uncertain. Check DATEV, then resolve the batch.")
-		frappe.db.set_value(BATCH, batch, "message", message)
-		log_event(BATCH, batch, "delivery_uncertain", str(error), error.response)
 	except Exception as error:
 		frappe.db.rollback()
 		reset(batch, bookings, error)
@@ -181,8 +178,11 @@ def reset(batch: str, bookings: list, error: Exception) -> None:
 
 def record(batch: str, bookings: list, final_status: str, result) -> None:
 	items = {item.booking: item for item in result.items}
+	uncertain = set(result.uncertain)
 	sent = []
 	for booking in bookings:
+		if booking.name in uncertain:
+			continue
 		item = items.get(booking.name)
 		if item and item.ok:
 			booking.db_set({"status": final_status, "message": ""})
@@ -191,14 +191,21 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 			message = item.message if item else _("The export connector returned no result.")
 			booking.db_set({"status": "Failed", "batch": None, "message": message})
 
-	failed = len(bookings) - len(sent)
-	status = "Sent" if not failed else "Partially Sent" if sent else "Failed"
+	failed = len(bookings) - len(sent) - len(uncertain)
 	message = _("{0} sent, {1} failed.").format(len(sent), failed)
-	frappe.db.set_value(BATCH, batch, {"status": status, "message": message, "sent_on": now_datetime()})
+	if uncertain:
+		status, event = "Sending", "delivery_uncertain"
+		message = _("Delivery to DATEV is uncertain. Check DATEV, then resolve the batch.")
+		values = {"message": message}
+	else:
+		status = "Sent" if not failed else "Partially Sent" if sent else "Failed"
+		event = frappe.scrub(status)
+		values = {"status": status, "message": message, "sent_on": now_datetime()}
+	frappe.db.set_value(BATCH, batch, values)
 	frappe.db.commit()
 
 	mark_parties_created(sent, final_status)
-	log_event(BATCH, batch, frappe.scrub(status), message, result.response)
+	log_event(BATCH, batch, event, message, result.response)
 
 
 def mark_parties_created(bookings: list, final_status: str) -> None:
@@ -216,10 +223,12 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 	delivered = frappe.utils.sbool(delivered)
 	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Sending":
 		frappe.throw(_("Only batches that are still sending can be resolved."))
+	batch_doc = frappe.get_doc(BATCH, batch)
+	final_status = registry.get_export(
+		frappe.get_doc(CLIENT, batch_doc.client), batch_doc.export_connector
+	).final_status
 	bookings = batched(batch)
 	if delivered:
-		client = frappe.get_doc(CLIENT, frappe.db.get_value(BATCH, batch, "client"))
-		final_status = registry.get_export(client).final_status
 		for booking in bookings:
 			booking.db_set({"status": final_status, "message": ""})
 		mark_parties_created(bookings, final_status)
@@ -227,7 +236,8 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 	else:
 		for booking in bookings:
 			booking.db_set({"status": "Pending", "batch": None, "message": ""})
-		status, event = "Failed", "resolved_not_delivered"
+		partly = frappe.db.exists(BOOKING, {"batch": batch, "status": final_status})
+		status, event = ("Partially Sent" if partly else "Failed"), "resolved_not_delivered"
 	frappe.db.set_value(BATCH, batch, {"status": status, "message": "", "sent_on": now_datetime()})
 	log_event(BATCH, batch, event)
 

@@ -8,7 +8,6 @@ from frappe.utils import flt, getdate, today
 from datev.clients.datevconnect import DATEVconnect, DATEVconnectError
 from datev.connectors.base import (
 	ConnectorError,
-	DeliveryUncertain,
 	ExportConnector,
 	ExportItemResult,
 	ExportResult,
@@ -130,6 +129,7 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 			groups.setdefault((booking.fiscal_year, DIRECTIONS[booking.kind]), []).append((booking, item))
 
 		responses = []
+		uncertain = []
 		for (fiscal_year, direction), entries in groups.items():
 			group = [booking for booking, _item in entries]
 			try:
@@ -138,14 +138,20 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 				)
 			except DATEVconnectError as e:
 				if e.maybe_sent or (e.status or 0) >= 500:
-					raise DeliveryUncertain(str(e), response=e.response) from e
+					uncertain.extend(booking.name for booking in group)
+					responses.append({"error": str(e), "response": e.response})
+					continue
 				results.update(
 					{booking.name: ExportItemResult(booking.name, False, str(e)) for booking in group}
 				)
 				continue
 			responses.append(response)
 			results.update({result.booking: result for result in item_results(group, response)})
-		return ExportResult(items=[results[booking.name] for booking in bookings], response=responses)
+		return ExportResult(
+			items=[results[booking.name] for booking in bookings if booking.name in results],
+			response=responses,
+			uncertain=uncertain,
+		)
 
 	@staticmethod
 	def load(doctype: str, names: set) -> dict:

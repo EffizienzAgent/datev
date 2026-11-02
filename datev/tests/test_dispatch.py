@@ -3,23 +3,21 @@ from typing import ClassVar
 from unittest.mock import patch
 
 import frappe
+import requests
 from frappe.tests import IntegrationTestCase
 
 from datev import dispatch, intake
-from datev.connectors.base import (
-	ConnectorError,
-	DeliveryUncertain,
-	ExportConnector,
-	ExportItemResult,
-	ExportResult,
-)
+from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
 from datev.tests.factories import make_client, make_document, make_party_account
+from datev.tests.test_datevconnect_client import fake_response
+from datev.tests.test_export_connectors import dc_client
 
 
 class FakeExport(ExportConnector):
 	final_status = "Exported"
 	calls: ClassVar[list] = []
 	rejected: ClassVar[set] = set()
+	uncertain: ClassVar[set] = set()
 	error: ClassVar[Exception | None] = None
 
 	def export(self, batch, bookings):
@@ -30,8 +28,10 @@ class FakeExport(ExportConnector):
 			items=[
 				ExportItemResult(booking.name, booking.name not in FakeExport.rejected, "rejected")
 				for booking in bookings
+				if booking.name not in FakeExport.uncertain
 			],
 			response={"accepted": len(bookings)},
+			uncertain=[booking.name for booking in bookings if booking.name in FakeExport.uncertain],
 		)
 
 
@@ -40,7 +40,12 @@ real_get_hooks = frappe.get_hooks
 
 def fake_hooks(name=None, *args, **kwargs):
 	if name == "datev_export_connectors":
-		return [{"EXTF download": "datev.tests.test_dispatch.FakeExport"}]
+		return [
+			{
+				"EXTF download": "datev.tests.test_dispatch.FakeExport",
+				"DATEVconnect": "datev.connectors.datevconnect.DATEVconnectExport",
+			}
+		]
 	return real_get_hooks(name, *args, **kwargs)
 
 
@@ -48,6 +53,7 @@ class TestDispatch(IntegrationTestCase):
 	def setUp(self):
 		FakeExport.calls = []
 		FakeExport.rejected = set()
+		FakeExport.uncertain = set()
 		FakeExport.error = None
 		for target in ("frappe.get_hooks", "frappe.db.commit"):
 			patcher = patch(target, fake_hooks) if target == "frappe.get_hooks" else patch(target)
@@ -352,11 +358,10 @@ class TestDispatch(IntegrationTestCase):
 
 	def uncertain_batch(self):
 		booking = self.booking()
-		FakeExport.error = DeliveryUncertain("read timed out")
+		FakeExport.uncertain = {booking}
 		batch = dispatch.collect(self.client_doc.name)
-		with patch("frappe.db.rollback"):
-			dispatch.send(batch)
-		FakeExport.error = None
+		dispatch.send(batch)
+		FakeExport.uncertain = set()
 		return batch, booking
 
 	def test_uncertain_delivery_keeps_batch_sending(self):
@@ -402,6 +407,12 @@ class TestDispatch(IntegrationTestCase):
 		self.assertEqual(len(FakeExport.calls), 2)
 		self.assertEqual(self.status(booking), "Exported")
 
+	def test_resolve_uses_connector_recorded_on_batch(self):
+		batch, booking = self.uncertain_batch()
+		self.client_doc.db_set("export_connector", "DATEVconnect")
+		dispatch.resolve_batch(batch, delivered=True)
+		self.assertEqual(self.status(booking), "Exported")
+
 	def test_resolve_batch_requires_manager(self):
 		batch, _booking = self.uncertain_batch()
 		with patch("frappe.only_for", side_effect=frappe.PermissionError) as only_for:
@@ -414,7 +425,11 @@ class TestDispatch(IntegrationTestCase):
 		batch = dispatch.collect(self.client_doc.name)
 		frappe.db.set_value("DATEV Booking", booking, {"status": "Pending", "batch": None})
 		dispatch.send(batch)
-		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Sent")
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", batch, ["status", "message"]),
+			("Sent", "No bookings left to send."),
+		)
+		self.assertTrue(frappe.db.exists("DATEV Event Log", {"reference_name": batch, "event": "sent"}))
 		self.assertEqual(FakeExport.calls, [])
 
 	def test_approve_missing_batch_is_quiet(self):
@@ -435,6 +450,74 @@ class TestDispatch(IntegrationTestCase):
 		self.assertEqual(self.status(booking), "Stuck")
 		with self.assertRaises(frappe.ValidationError):
 			dispatch.hold(booking)
+
+
+class TestDATEVconnectUncertainGroup(IntegrationTestCase):
+	def setUp(self):
+		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
+		self.client_doc = dc_client(approval_required=0, require_document_link=1)
+		party = make_party_account(self.client_doc, account_number=10001, sync_status="Imported")
+
+		def add(date, **values):
+			document = make_document(
+				self.client_doc,
+				document_date=date,
+				status="Uploaded",
+				external_id="ID-1",
+				program_code="BEDI",
+			)
+			return intake.add_booking(
+				document.name,
+				"1",
+				kind="Outgoing Invoice",
+				party_account=party.name,
+				contra_account=4400,
+				amount=119,
+				debit_credit="S",
+				**values,
+			)
+
+		self.delivered = add("2026-12-30")
+		self.uncertain = add("2027-01-05")
+		self.unbuildable = add("2027-01-06", bu_key="X1")
+		self.batch = dispatch.collect(self.client_doc.name)
+
+		def request(method, url, **kwargs):
+			if "/20260101/" in url:
+				return fake_response(201, {"succeeded": [{"index": "0"}], "failed": []})
+			raise requests.ReadTimeout("read timed out")
+
+		with patch("datev.http.requests.request", side_effect=request):
+			dispatch.send(self.batch)
+
+	def states(self):
+		return [
+			frappe.db.get_value("DATEV Booking", name, ["status", "batch"])
+			for name in (self.delivered, self.uncertain, self.unbuildable)
+		]
+
+	def test_uncertain_group_keeps_other_results(self):
+		self.assertEqual(
+			self.states(),
+			[("Transferred", self.batch), ("Batched", self.batch), ("Failed", None)],
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", self.batch, ["status", "message"]),
+			("Sending", "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."),
+		)
+
+	def test_resolve_not_delivered_resets_only_uncertain(self):
+		dispatch.resolve_batch(self.batch, delivered=False)
+		self.assertEqual(self.states(), [("Transferred", self.batch), ("Pending", None), ("Failed", None)])
+
+	def test_resolve_delivered_transfers_only_uncertain(self):
+		dispatch.resolve_batch(self.batch, delivered=True)
+		self.assertEqual(
+			self.states(), [("Transferred", self.batch), ("Transferred", self.batch), ("Failed", None)]
+		)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Sent")
 
 
 def only_own_client(client):

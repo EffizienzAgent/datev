@@ -11,10 +11,6 @@ class ConnectorError(Exception):
 		self.response = response
 
 
-class DeliveryUncertain(ConnectorError):
-	pass
-
-
 @dataclass
 class StorageResult:
 	external_id: str | None
@@ -34,6 +30,7 @@ class ExportResult:
 	items: list[ExportItemResult]
 	files: list[str] = field(default_factory=list)
 	response: object = None
+	uncertain: list[str] = field(default_factory=list)
 
 
 @dataclass

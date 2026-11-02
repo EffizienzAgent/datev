@@ -18,8 +18,8 @@ def get_storage(client):
 	return _resolve("datev_storage_connectors", client.storage_connector, client)
 
 
-def get_export(client):
-	return _resolve("datev_export_connectors", client.export_connector, client)
+def get_export(client, label: str | None = None):
+	return _resolve("datev_export_connectors", label or client.export_connector, client)
 
 
 def get_master_data(client):
