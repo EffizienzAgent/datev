@@ -19,7 +19,7 @@ All submit calls are idempotent: repeating a call with the same `source_key` (do
 | `document_date`, `document_number`, `amount` | Header data |
 | `currency` | Default `EUR` |
 | `is_return` | `1` for cancellation invoices |
-| `source_doctype`, `source_name` | Optional reference to the source record |
+| `source_doctype`, `source_name` | Optional reference to the source record. `source_doctype` must be an existing DocType name; sources outside Frappe leave both empty |
 
 Returns `{"name": "...", "status": "Pending"}`.
 

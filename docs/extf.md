@@ -15,7 +15,7 @@ The EXTF connectors write DATEV's import format from DATEV's public format descr
 
 One Buchungsstapel file per fiscal year in the batch: `EXTF_Buchungsstapel_<client number>_<from>_<to>.csv`, with the period from the document dates. Fiscal years follow the client's fiscal year start month.
 
-When a batch contains bookings for parties with status New, a master data file `EXTF_Debitoren_Kreditoren_<client number>_<date>.csv` is added. Those parties become Created once the batch is exported.
+When a batch contains bookings for parties with status New, one master data file per fiscal year of the batch is added, `EXTF_Debitoren_Kreditoren_<client number>_<fiscal year start>_<date>.csv`, with the matching WJ-Beginn in its header. Those parties become Created once the batch is exported.
 
 The files are attached to the batch (private) and can be downloaded again at any time; the content is identical. The batch's file field links the first file. EXTF by e-mail additionally sends all files to the client's EXTF address.
 
