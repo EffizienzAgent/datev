@@ -18,7 +18,7 @@ All submit calls are idempotent: repeating a call with the same `source_key` (do
 | `file_name`, `content_base64` | File and its base64 content (strictly validated) |
 | `document_date`, `document_number`, `amount` | Header data |
 | `currency` | Default `EUR` |
-| `is_return` | `1` for credit notes |
+| `is_return` | `1` for cancellation invoices |
 | `source_doctype`, `source_name` | Optional reference to the source record |
 
 Returns `{"name": "...", "status": "Pending"}`.

@@ -17,20 +17,20 @@ PROBLEM_FIELDS = (
 
 def get_columns() -> list[dict]:
 	def column(fieldname, label, fieldtype="Int", **extra):
-		return {"fieldname": fieldname, "label": _(label), "fieldtype": fieldtype, "width": 140, **extra}
+		return {"fieldname": fieldname, "label": label, "fieldtype": fieldtype, "width": 140, **extra}
 
 	return [
-		column("client", "Client", "Link", options=CLIENT, width=220),
-		column("transferred_30d", "Transferred (30 days)"),
-		column("awaiting_approval", "Awaiting Approval"),
-		column("sending_batches", "Sending Batches"),
-		column("stuck_bookings", "Stuck Bookings"),
-		column("stuck_documents", "Stuck Documents"),
-		column("documents_without_link", "Documents without Link"),
-		column("held", "Held"),
-		column("parties_to_clarify", "Parties to Clarify"),
-		column("overdue", "Overdue", "Check", width=90),
-		column("bos_credits", "Business OS Credits"),
+		column("client", _("Client"), "Link", options=CLIENT, width=220),
+		column("transferred_30d", _("Transferred (30 days)")),
+		column("awaiting_approval", _("Awaiting Approval")),
+		column("sending_batches", _("Sending Batches")),
+		column("stuck_bookings", _("Stuck Bookings")),
+		column("stuck_documents", _("Stuck Documents")),
+		column("documents_without_link", _("Documents without Link")),
+		column("held", _("Held")),
+		column("parties_to_clarify", _("Parties to Clarify")),
+		column("overdue", _("Overdue"), "Check", width=90),
+		column("bos_credits", _("Business OS Credits")),
 	]
 
 
