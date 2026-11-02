@@ -1,3 +1,6 @@
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, today
@@ -19,22 +22,31 @@ DIRECTIONS = {"Outgoing Invoice": "outgoing", "Incoming Invoice": "incoming"}
 PARTY_FIELDS = {"Outgoing Invoice": "debitor_account_number", "Incoming Invoice": "creditor_account_number"}
 POSITIVE = {("Outgoing Invoice", "S"), ("Incoming Invoice", "H")}
 PARTY_KINDS = {"Debtor": "debitors", "Creditor": "creditors"}
+DATEV_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 
 def technical_factor(client) -> int:
 	return 10 ** (TECHNICAL_GL_LENGTH - (client.account_length or 4))
 
 
+def document_datetime(value) -> str:
+	return datetime.combine(getdate(value), time(), DATEV_TIMEZONE).isoformat()
+
+
 def proposal_item(booking, document, party_account, client) -> dict:
-	if not party_account.account_number:
+	if not (party_account and party_account.account_number):
 		raise ConnectorError(_("Booking {0} has no party account number.").format(booking.name))
+	if not booking.contra_account:
+		raise ConnectorError(_("Booking {0} has no contra account.").format(booking.name))
+	if booking.bu_key and not str(booking.bu_key).isdigit():
+		raise ConnectorError(_("Booking {0} has an invalid BU key.").format(booking.name))
 	factor = technical_factor(client)
 	mappings = {row.source_account: row.datev_account for row in client.account_mappings}
 	contra = mappings.get(booking.contra_account, booking.contra_account)
 	amount = flt(booking.amount, 2)
 	item = {
 		"amount": amount if (booking.kind, booking.debit_credit) in POSITIVE else -amount,
-		"date": getdate(booking.document_date).isoformat(),
+		"date": document_datetime(booking.document_date),
 		PARTY_FIELDS[booking.kind]: party_account.account_number * factor,
 		"account_number": contra * factor,
 		"accounting_transaction_key": int(booking.bu_key) if booking.bu_key else None,
@@ -104,21 +116,25 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 		documents = self.load("DATEV Document", {booking.document for booking in bookings})
 		parties = self.load("DATEV Party Account", {booking.party_account for booking in bookings})
 
+		results = {}
 		groups = {}
 		for booking in bookings:
-			groups.setdefault((booking.fiscal_year, DIRECTIONS[booking.kind]), []).append(booking)
-
-		results = {}
-		responses = []
-		for (fiscal_year, direction), group in groups.items():
-			items = [
-				proposal_item(
-					booking, documents.get(booking.document), parties[booking.party_account], self.client
-				)
-				for booking in group
-			]
 			try:
-				response = api.post_proposals(client_id, fiscal_year, direction, items)
+				item = proposal_item(
+					booking, documents.get(booking.document), parties.get(booking.party_account), self.client
+				)
+			except ConnectorError as e:
+				results[booking.name] = ExportItemResult(booking.name, False, str(e))
+				continue
+			groups.setdefault((booking.fiscal_year, DIRECTIONS[booking.kind]), []).append((booking, item))
+
+		responses = []
+		for (fiscal_year, direction), entries in groups.items():
+			group = [booking for booking, _item in entries]
+			try:
+				response = api.post_proposals(
+					client_id, fiscal_year, direction, [item for _b, item in entries]
+				)
 			except ConnectorError as e:
 				results.update(
 					{booking.name: ExportItemResult(booking.name, False, str(e)) for booking in group}
@@ -172,11 +188,16 @@ class DATEVconnectMasterData(DATEVconnectMixin, MasterDataConnector):
 
 
 def party_payload(party_account, factor: int) -> dict:
+	name = party_account.party_name or ""
 	payload = {
 		"id": str(party_account.account_number * factor),
 		"legal_entity_type": "legal_person",
-		"legal_person": {"legal_name": (party_account.party_name or "")[:40]},
+		"legal_person": {"legal_name": name[:40]},
+		"short_name": name[:15],
 	}
+	iban = "".join((party_account.iban or "").split()).upper()
+	if iban:
+		payload["banks"] = [{"iban": iban, "country_code": iban[:2]}]
 	vat_id = "".join((party_account.vat_id or "").split()).upper()
 	if vat_id:
 		payload["eu_vat_id_country_code"] = vat_id[:2]

@@ -20,9 +20,9 @@ class ExtfDownloadExport(ExportConnector):
 	def export(self, batch, bookings: list) -> ExportResult:
 		files = self.build_files(batch, bookings)
 		urls = [self.save_file(batch, name, content) for name, content in files]
+		self.deliver(batch, files)
 		frappe.db.set_value("DATEV Batch", batch.name, "file", urls[0])
 		batch.file = urls[0]
-		self.deliver(batch, files)
 		return ExportResult(
 			items=[ExportItemResult(booking.name, True) for booking in bookings],
 			files=urls,

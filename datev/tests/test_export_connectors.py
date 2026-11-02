@@ -52,7 +52,7 @@ class TestProposalItem(IntegrationTestCase):
 			proposal_item(booking, document, self.party, self.client),
 			{
 				"amount": 119.0,
-				"date": "2027-01-05",
+				"date": "2027-01-05T00:00:00+01:00",
 				"debitor_account_number": 100010000,
 				"account_number": 44000000,
 				"accounting_transaction_key": 3,
@@ -186,6 +186,23 @@ class TestDATEVconnectExport(IntegrationTestCase):
 			[(i.ok, i.message) for i in result.items], [(False, "Fiscal year locked"), (True, "")]
 		)
 
+	def test_unbuildable_booking_does_not_block_other_groups(self):
+		broken = make_party_account(self.client, account_number=None)
+		good = self.booking("2026-12-30")
+		bad = make_booking(make_document(self.client, document_date="2027-01-05"), broken)
+		other = self.booking("2027-01-06")
+		calls = []
+
+		def post(client_id, fiscal_year_id, direction, items):
+			calls.append((fiscal_year_id, len(items)))
+			return {"succeeded": [{"index": str(i)} for i in range(len(items))], "failed": []}
+
+		with patch(f"{API}.post_proposals", side_effect=post):
+			result = DATEVconnectExport(self.client).export(self.batch, [good, bad, other])
+		self.assertEqual(sorted(calls), [("20260101", 1), ("20270101", 1)])
+		self.assertEqual([item.ok for item in result.items], [True, False, True])
+		self.assertIn("party account number", result.items[1].message)
+
 	def test_resolves_and_caches_client_id(self):
 		client = dc_client(dc_client_id=None)
 		bookings = [make_booking(make_document(client), make_party_account(client, account_number=10002))]
@@ -265,11 +282,29 @@ class TestDATEVconnectMasterData(IntegrationTestCase):
 					"id": "100030000",
 					"legal_entity_type": "legal_person",
 					"legal_person": {"legal_name": "Gamma KG"},
+					"short_name": "Gamma KG",
 					"eu_vat_id_country_code": "DE",
 					"eu_vat_id_number": "999",
 				}
 			],
 		)
+
+	def test_create_party_payload_with_iban_and_long_name(self):
+		party = make_party_account(
+			self.client,
+			account_number=10005,
+			party_name="Delta Handels GmbH",
+			iban="de02 1203 0000 0000 2020 51",
+		)
+		with (
+			patch(f"{API}.fiscal_years", return_value=[{"id": "20270101", "is_locked": False}]),
+			patch(f"{API}.put_party", return_value={"succeeded": [{"index": "0"}]}) as put,
+		):
+			DATEVconnectMasterData(self.client).create_party(party)
+		payload = put.call_args.args[3][0]
+		self.assertEqual(payload["short_name"], "Delta Handels G")
+		self.assertEqual(payload["banks"], [{"iban": "DE02120300000000202051", "country_code": "DE"}])
+		self.assertNotIn("eu_vat_id_country_code", payload)
 
 	def test_create_party_failure_raises(self):
 		party = make_party_account(self.client, account_number=10004)
@@ -335,6 +370,12 @@ class TestExtfConnectors(IntegrationTestCase):
 		self.assertTrue(names[1].startswith("EXTF_Debitoren_Kreditoren_55003_"))
 		self.assertTrue(all(a["fcontent"] for a in kwargs["attachments"]))
 		self.assertEqual(len(result.files), 2)
+
+	@patch("frappe.sendmail", side_effect=frappe.OutgoingEmailError("down"))
+	def test_extf_email_failure_leaves_batch_file_empty(self, sendmail):
+		with self.assertRaises(frappe.OutgoingEmailError):
+			ExtfEmailExport(self.client).export(self.batch, self.bookings)
+		self.assertFalse(frappe.db.get_value("DATEV Batch", self.batch.name, "file"))
 
 	def test_extf_master_data(self):
 		connector = ExtfMasterData(self.client)

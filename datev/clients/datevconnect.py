@@ -56,7 +56,7 @@ class DATEVconnect:
 		path = self._party_path(client_id, fiscal_year_id, kind) + "/next-available"
 		return self._call("GET", path)["account_number"]
 
-	def put_party(self, client_id: str, fiscal_year_id: str, kind: str, payload: dict) -> dict:
+	def put_party(self, client_id: str, fiscal_year_id: str, kind: str, payload: list[dict]) -> dict:
 		return self._call(
 			"PUT",
 			self._party_path(client_id, fiscal_year_id, kind),
