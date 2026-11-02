@@ -7,6 +7,19 @@ from datev import dispatch
 from datev.tests.factories import make_booking, make_client, make_document, make_party_account
 
 
+def make_user(*roles):
+	user = frappe.get_doc(
+		{
+			"doctype": "User",
+			"email": f"protect-{frappe.generate_hash(length=8)}@example.com",
+			"first_name": "Protect",
+			"send_welcome_email": 0,
+			"roles": [{"role": role} for role in roles],
+		}
+	)
+	return user.insert(ignore_permissions=True).name
+
+
 class TestProtectedFields(IntegrationTestCase):
 	def setUp(self):
 		self.client_doc = make_client()
@@ -53,9 +66,39 @@ class TestProtectedFields(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			batch.save()
 
+	def test_user_cannot_write_booking(self):
+		user = make_user("DATEV User")
+		frappe.set_user(user)
+		self.addCleanup(frappe.set_user, "Administrator")
+		booking = frappe.get_doc("DATEV Booking", self.booking.name)
+		booking.posting_text = "Changed"
+		with self.assertRaises(frappe.PermissionError):
+			booking.save()
+		batch = frappe.get_doc({"doctype": "DATEV Batch", "client": self.client_doc.name})
+		with self.assertRaises(frappe.PermissionError):
+			batch.insert()
+		self.assertTrue(frappe.has_permission("DATEV Booking", "read", self.booking.name))
+
+	def test_held_only_via_hold(self):
+		doc = frappe.get_doc("DATEV Booking", self.booking.name)
+		doc.held = 1
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+		with self.assertRaises(frappe.ValidationError):
+			frappe.get_doc({**self.booking.as_dict(), "name": None, "line_key": "2", "held": 1}).insert()
+		dispatch.hold(self.booking.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", self.booking.name, "held"), 1)
+
+	def test_changes_tracked(self):
+		for doctype in ("DATEV Booking", "DATEV Batch", "DATEV Party Account", "DATEV Client"):
+			self.assertTrue(frappe.get_meta(doctype).track_changes, doctype)
+
 	def test_fields_read_only_in_meta(self):
 		for doctype, fields in (
-			("DATEV Booking", ("status", "batch", "amount", "party_account", "contra_account", "document")),
+			(
+				"DATEV Booking",
+				("status", "batch", "amount", "party_account", "contra_account", "document", "held"),
+			),
 			("DATEV Batch", ("status",)),
 			("DATEV Document", ("status", "external_id", "guid", "program_code")),
 		):

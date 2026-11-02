@@ -110,5 +110,6 @@
    "fieldtype": "Small Text",
    "label": "Message"
   }
- ]
+ ],
+ "track_changes": 1
 }

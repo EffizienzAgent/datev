@@ -22,7 +22,6 @@
   {
    "role": "DATEV User",
    "read": 1,
-   "write": 1,
    "report": 1
   }
  ],
@@ -104,5 +103,6 @@
    "fieldtype": "Small Text",
    "label": "Message"
   }
- ]
+ ],
+ "track_changes": 1
 }

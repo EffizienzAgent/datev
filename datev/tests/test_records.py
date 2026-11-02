@@ -20,6 +20,12 @@ class TestRecords(IntegrationTestCase):
 		other = make_document(self.client)
 		make_booking(other, self.party, line_key="1")
 
+	def test_kind_and_side_required(self):
+		for field in ("kind", "debit_credit"):
+			with self.subTest(field=field), self.assertRaises(frappe.MandatoryError):
+				make_booking(self.document, self.party, line_key=field, **{field: None})
+			self.assertTrue(frappe.get_meta("DATEV Booking").get_field(field).reqd)
+
 	def test_booking_amount_positive(self):
 		for amount in (0, -5):
 			with self.assertRaises(frappe.ValidationError):

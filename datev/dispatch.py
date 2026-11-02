@@ -18,7 +18,14 @@ DOCUMENT = "DATEV Document"
 PARTY = "DATEV Party Account"
 DISPATCH_ROLES = ["DATEV User", "DATEV Manager"]
 LINKED_STATUSES = ("Uploaded", "No Link")
-MANDATORY_FIELDS = ("party_account", "contra_account", "document_field_1", "document_date")
+MANDATORY_FIELDS = (
+	"kind",
+	"debit_credit",
+	"party_account",
+	"contra_account",
+	"document_field_1",
+	"document_date",
+)
 RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 

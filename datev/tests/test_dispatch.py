@@ -127,9 +127,31 @@ class TestDispatch(IntegrationTestCase):
 			return frappe.db.get_value("DATEV Booking", name, "bu_key") or ""
 
 		self.assertEqual(add("1", tax_code="DE19"), "3")
-		self.assertEqual(add("2", tax_code="UNKNOWN"), "")
 		self.assertEqual(add("3", tax_code="DE19", bu_key="9"), "9")
 		self.assertEqual(add("4"), "")
+
+	def tax_key_booking(self, tax_keys, tax_code):
+		client = make_client(tax_keys=tax_keys)
+		party = make_party_account(client, preferred_number=10001)
+		return intake.add_booking(
+			self.document(client).name,
+			"1",
+			kind="Outgoing Invoice",
+			party_account=party.name,
+			contra_account=4400,
+			amount=119,
+			debit_credit="S",
+			tax_code=tax_code,
+		)
+
+	def test_missing_tax_key_blocks(self):
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.tax_key_booking([{"tax_code": "DE19", "bu_key": "3"}], "DE7")
+		self.assertIn("DE7", str(raised.exception))
+
+	def test_empty_bu_key_row_allowed(self):
+		name = self.tax_key_booking([{"tax_code": "DE19", "bu_key": ""}], "DE19")
+		self.assertEqual(frappe.db.get_value("DATEV Booking", name, "bu_key") or "", "")
 
 	def test_preflight_requires_link_when_strict(self):
 		client = make_client(require_document_link=1)
