@@ -179,6 +179,8 @@ class TestNotify(IntegrationTestCase):
 		make_document(problem, status="No Link")
 		make_batch(problem)
 		make_batch(problem, status="Sending")
+		make_batch(problem, status="Failed")
+		make_batch(problem, status="Partially Sent")
 		make_party_account(problem, sync_status="To Clarify")
 		make_party_account(problem, sync_status="Error")
 		make_booking(make_document(problem), make_party_account(problem), status="Failed")
@@ -193,6 +195,8 @@ class TestNotify(IntegrationTestCase):
 				"transferred_30d",
 				"awaiting_approval",
 				"sending_batches",
+				"failed_batches",
+				"unconfirmed_batches",
 				"stuck_bookings",
 				"failed_bookings",
 				"stuck_documents",
@@ -216,8 +220,39 @@ class TestNotify(IntegrationTestCase):
 				row["party_errors"],
 				row["failed_bookings"],
 				row["bos_credits"],
+				row["failed_batches"],
+				row["enabled"],
 			),
-			(1, 1, 1, 1, 1, 1, 1, 7),
+			(1, 1, 1, 1, 1, 1, 1, 7, 2, 1),
 		)
 		self.assertLess(list(by_client).index(problem.name), list(by_client).index(quiet.name))
 		self.assertEqual(by_client[quiet.name]["stuck_documents"], 0)
+
+	def test_unconfirmed_in_report(self):
+		client = frappe.get_doc("DATEV Client", self.client_doc.name)
+		recent = make_batch(client, status="Sent", export_connector="EXTF download", sent_on=now_datetime())
+		_, rows = execute({})
+		row = next(row for row in rows if row["client"] == client.name)
+		self.assertEqual((row["unconfirmed_batches"], row["unconfirmed_overdue"]), (1, 0))
+
+		old = add_to_date(now_datetime(), days=-8)
+		make_batch(client, status="Partially Sent", export_connector="EXTF e-mail", sent_on=old)
+		make_batch(client, status="Sent", export_connector="EXTF download", sent_on=old, confirmed_on=old)
+		make_batch(client, status="Sent", export_connector="DATEVconnect", sent_on=old)
+		make_batch(client, status="Failed", export_connector="EXTF download", sent_on=old)
+		self.assertEqual(recent.status, "Sent")
+		_, rows = execute({})
+		row = next(row for row in rows if row["client"] == client.name)
+		self.assertEqual((row["unconfirmed_batches"], row["unconfirmed_overdue"]), (2, 1))
+
+		notify.check()
+		(entry,) = logs(self.user, subject=("like", "%stuck%"))
+		self.assertIn("1 EXTF files not confirmed", entry.subject)
+
+	def test_report_shows_disabled_clients(self):
+		disabled = make_client(enabled=0)
+		_, rows = execute({})
+		row = next(row for row in rows if row["client"] == disabled.name)
+		self.assertEqual(row["enabled"], 0)
+		position = [row["client"] for row in rows].index(disabled.name)
+		self.assertTrue(all(not row["enabled"] for row in rows[position:]))

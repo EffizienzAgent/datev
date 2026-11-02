@@ -78,6 +78,23 @@ class ExtfEmailExport(ExtfDownloadExport):
 			raise ConnectorError(_("No EXTF e-mail address is set for this client."))
 		return super().export(batch, bookings)
 
+	def resend(self, batch) -> None:
+		if not self.client.extf_email:
+			frappe.throw(_("No EXTF e-mail address is set for this client."))
+		files = []
+		for name in frappe.get_all(
+			"File",
+			filters={"attached_to_doctype": "DATEV Batch", "attached_to_name": batch.name},
+			pluck="name",
+			order_by="creation asc",
+		):
+			file = frappe.get_doc("File", name)
+			with open(file.get_full_path(), "rb") as f:
+				files.append((file.file_name, f.read()))
+		if not files:
+			frappe.throw(_("Batch {0} has no files.").format(batch.name))
+		self.deliver(batch, files)
+
 	def deliver(self, batch, files: list[tuple[str, bytes]]) -> None:
 		frappe.sendmail(
 			recipients=[self.client.extf_email],

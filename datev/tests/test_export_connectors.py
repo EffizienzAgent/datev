@@ -5,12 +5,14 @@ import requests
 from frappe.tests import IntegrationTestCase
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
+from datev import dispatch, intake, notify
 from datev.clients.datevconnect import DATEVconnectError
 from datev.connectors.base import ConnectorError
 from datev.connectors.datevconnect import DATEVconnectExport, DATEVconnectMasterData, proposal_item
 from datev.connectors.extf import ExtfDownloadExport, ExtfEmailExport, ExtfMasterData
 from datev.tests.factories import make_booking, make_client, make_document, make_party_account
 from datev.tests.test_datevconnect_client import fake_response
+from datev.tests.test_notify import make_user
 
 BASE = "https://host:58452/datev/api/accounting/v1"
 CLIENT_ID = "78a11a29-2a32-4a5e-a73b-632f6aeae131"
@@ -520,3 +522,109 @@ class TestExtfConnectors(IntegrationTestCase):
 		with self.assertRaises(ConnectorError):
 			connector.next_number("Debtor")
 		self.assertIsNone(connector.create_party(self.new_party))
+
+
+class TestExtfLifecycle(IntegrationTestCase):
+	def setUp(self):
+		for patcher in (patch("frappe.db.commit"), patch("frappe.enqueue")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
+		sendmail = patch("frappe.sendmail")
+		self.sendmail = sendmail.start()
+		self.addCleanup(sendmail.stop)
+		self.user = make_user()
+		self.client = make_client(
+			export_connector="EXTF e-mail",
+			extf_email="datev@example.test",
+			approval_required=0,
+			responsible_user=self.user,
+			last_party_import="[]",
+			last_party_import_on=frappe.utils.now_datetime(),
+		)
+		party = make_party_account(self.client, preferred_number=10001)
+		document = make_document(self.client, status="Uploaded", external_id="ID-1", program_code="BEDI")
+		self.booking = intake.add_booking(
+			document.name,
+			"1",
+			kind="Outgoing Invoice",
+			party_account=party.name,
+			contra_account=4400,
+			amount=119,
+			debit_credit="S",
+		)
+		self.batch = dispatch.collect(self.client.name)
+
+	def send(self):
+		dispatch.send(self.batch)
+		return frappe.get_doc("DATEV Batch", self.batch)
+
+	def alerts(self):
+		return frappe.get_all(
+			"Notification Log",
+			filters={"for_user": self.user, "document_type": "DATEV Batch", "document_name": self.batch},
+			pluck="subject",
+		)
+
+	def test_file_ready_notifies(self):
+		self.assertEqual(self.send().status, "Sent")
+		self.assertEqual(self.alerts(), [f"DATEV file ready: {self.batch}"])
+		notify.file_ready(frappe.get_doc("DATEV Batch", self.batch))
+		self.assertEqual(len(self.alerts()), 1)
+
+	def test_confirm_import(self):
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.confirm_import(self.batch)
+		self.send()
+		dispatch.confirm_import(self.batch)
+		batch = frappe.get_doc("DATEV Batch", self.batch)
+		self.assertEqual(batch.confirmed_by, frappe.session.user)
+		self.assertTrue(batch.confirmed_on)
+		self.assertTrue(
+			frappe.db.exists("DATEV Event Log", {"reference_name": self.batch, "event": "import_confirmed"})
+		)
+		dispatch.confirm_import(self.batch)
+		self.assertEqual(
+			frappe.db.count("DATEV Event Log", {"reference_name": self.batch, "event": "import_confirmed"}), 1
+		)
+
+		frappe.db.set_value(
+			"DATEV Batch", self.batch, {"confirmed_on": None, "export_connector": "DATEVconnect"}
+		)
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.confirm_import(self.batch)
+
+	def test_resend_extf_email(self):
+		self.send()
+		first = self.sendmail.call_args.kwargs
+		self.sendmail.reset_mock()
+		dispatch.resend_extf_email(self.batch)
+		again = self.sendmail.call_args.kwargs
+		self.assertEqual(again["recipients"], ["datev@example.test"])
+		self.assertEqual(
+			sorted(a["fcontent"] for a in again["attachments"]),
+			sorted(a["fcontent"] for a in first["attachments"]),
+		)
+		self.assertTrue(
+			frappe.db.exists("DATEV Event Log", {"reference_name": self.batch, "event": "resent"})
+		)
+
+		frappe.db.set_value("DATEV Batch", self.batch, "export_connector", "EXTF download")
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.resend_extf_email(self.batch)
+
+	def test_resolve_extf_delivered_rejected(self):
+		frappe.db.set_value("DATEV Batch", self.batch, "status", "Sending")
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.resolve_batch(self.batch, delivered=True)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", self.booking, "status"), "Batched")
+		dispatch.resolve_batch(self.batch, delivered=False)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", self.booking, ["status", "batch"]), ("Pending", None)
+		)
+
+	def test_patch_confirms_existing_batches(self):
+		from datev.patches.v0_2 import confirm_existing_extf_batches
+
+		batch = self.send()
+		confirm_existing_extf_batches.execute()
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "confirmed_on"), batch.sent_on)

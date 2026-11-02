@@ -35,6 +35,8 @@
   "failed_count",
   "file",
   "notified_on",
+  "confirmed_on",
+  "confirmed_by",
   "message"
  ],
  "fields": [
@@ -96,6 +98,19 @@
    "fieldname": "notified_on",
    "fieldtype": "Datetime",
    "label": "Notified On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_on",
+   "fieldtype": "Datetime",
+   "label": "Import Confirmed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_by",
+   "fieldtype": "Link",
+   "label": "Import Confirmed By",
+   "options": "User",
    "read_only": 1
   },
   {

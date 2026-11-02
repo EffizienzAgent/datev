@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_to_date, getdate, now_datetime
 
+from datev import notify
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
 from datev.connectors.datevconnect import clear_fiscal_year_cache
@@ -27,6 +28,7 @@ MANDATORY_FIELDS = (
 	"document_date",
 )
 RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
+SENT_STATUSES = ("Sent", "Partially Sent")
 JOB_TIMEOUT = 3600
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
@@ -335,6 +337,8 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 
 	mark_parties_created(sent, final_status)
 	log_event(BATCH, batch, event, message, result.response)
+	if sent and final_status == "Exported":
+		notify.file_ready(frappe.get_doc(BATCH, batch))
 
 
 def mark_parties_created(bookings: list, final_status: str) -> None:
@@ -353,9 +357,14 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Sending":
 		frappe.throw(_("Only batches that are still sending can be resolved."))
 	batch_doc = frappe.get_doc(BATCH, batch)
-	final_status = registry.get_export(
-		frappe.get_doc(CLIENT, batch_doc.client), batch_doc.export_connector
-	).final_status
+	connector = export_connector(batch_doc)
+	final_status = connector.final_status
+	if delivered and not connector.remote:
+		frappe.throw(
+			_(
+				"Files are not delivered to DATEV directly. Mark the batch as not delivered to export it again."
+			)
+		)
 	bookings = batched(batch)
 	if delivered:
 		for booking in bookings:
@@ -369,6 +378,33 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 		status, event = ("Partially Sent" if partly else "Failed"), "resolved_not_delivered"
 	frappe.db.set_value(BATCH, batch, {"status": status, "message": "", "sent_on": now_datetime()})
 	log_event(BATCH, batch, event)
+
+
+def export_connector(batch_doc):
+	return registry.get_export(frappe.get_doc(CLIENT, batch_doc.client), batch_doc.export_connector)
+
+
+@frappe.whitelist(methods=["POST"])
+def confirm_import(batch: str) -> None:
+	frappe.only_for(DISPATCH_ROLES)
+	batch_doc = frappe.get_doc(BATCH, batch, for_update=True)
+	if batch_doc.status not in SENT_STATUSES or export_connector(batch_doc).remote:
+		frappe.throw(_("Only exported EXTF batches can be confirmed as imported."))
+	if batch_doc.confirmed_on:
+		return
+	frappe.db.set_value(BATCH, batch, {"confirmed_on": now_datetime(), "confirmed_by": frappe.session.user})
+	log_event(BATCH, batch, "import_confirmed")
+
+
+@frappe.whitelist(methods=["POST"])
+def resend_extf_email(batch: str) -> None:
+	frappe.only_for(DISPATCH_ROLES)
+	batch_doc = frappe.get_doc(BATCH, batch)
+	resend = getattr(export_connector(batch_doc), "resend", None)
+	if batch_doc.status not in SENT_STATUSES or not resend:
+		frappe.throw(_("Only exported batches of the EXTF e-mail connector can be sent again."))
+	resend(batch_doc)
+	log_event(BATCH, batch, "resent")
 
 
 @frappe.whitelist(methods=["POST"])

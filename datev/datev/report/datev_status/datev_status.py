@@ -14,6 +14,7 @@ PROBLEM_FIELDS = (
 	"parties_to_clarify",
 	"party_errors",
 	"overdue",
+	"unconfirmed_overdue",
 )
 
 
@@ -26,6 +27,8 @@ def get_columns() -> list[dict]:
 		column("transferred_30d", _("Transferred (30 days)")),
 		column("awaiting_approval", _("Awaiting Approval")),
 		column("sending_batches", _("Sending Batches")),
+		column("failed_batches", _("Failed Batches (30 days)")),
+		column("unconfirmed_batches", _("EXTF Files Not Confirmed")),
 		column("stuck_bookings", _("Stuck Bookings")),
 		column("failed_bookings", _("Failed Bookings")),
 		column("stuck_documents", _("Stuck Documents")),
@@ -46,16 +49,17 @@ def execute(filters=None):
 	now = now_datetime()
 	rows = []
 	problems = {}
-	for name in frappe.get_all(CLIENT, filters={"enabled": 1}, pluck="name", order_by="name asc"):
+	for name in frappe.get_all(CLIENT, pluck="name", order_by="name asc"):
 		client = frappe.get_doc(CLIENT, name)
 		is_business_os = client.storage_connector == "Business OS"
 		row = {
 			"client": name,
 			**notify.status_counts(name, now),
-			"overdue": int(dispatch.is_overdue(client, now)),
+			"overdue": int(client.enabled and dispatch.is_overdue(client, now)),
 			"bos_credits": client.bos_credits if is_business_os else None,
+			"enabled": client.enabled,
 		}
 		problems[name] = has_problem(row, client)
 		rows.append(row)
-	rows.sort(key=lambda row: not problems[row["client"]])
+	rows.sort(key=lambda row: (not row["enabled"], not problems[row["client"]]))
 	return get_columns(), rows
