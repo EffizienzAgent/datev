@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:32+0000\n"
+"POT-Creation-Date: 2026-11-02 11:33+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: datev/dispatch.py:311
+#: datev/dispatch.py:317
 msgid "A reason is required to reset a booking."
 msgstr "Zum Zurücksetzen einer Buchung ist eine Begründung erforderlich."
 
@@ -159,27 +159,27 @@ msgstr "Buchungsstapel {0} von {1} wartet auf Freigabe"
 msgid "Batched"
 msgstr "Im Stapel"
 
-#: datev/dispatch.py:178
+#: datev/dispatch.py:184
 #, python-brace-format
 msgid "Booking {0} cannot be held."
 msgstr "Buchung {0} kann nicht zurückgehalten werden."
 
-#: datev/connectors/datevconnect.py:42
+#: datev/connectors/datevconnect.py:47
 #, python-brace-format
 msgid "Booking {0} has an invalid BU key."
 msgstr "Buchung {0} hat einen ungültigen BU-Schlüssel."
 
-#: datev/connectors/datevconnect.py:40
+#: datev/connectors/datevconnect.py:45
 #, python-brace-format
 msgid "Booking {0} has no contra account."
 msgstr "Buchung {0} hat kein Gegenkonto."
 
-#: datev/connectors/datevconnect.py:38 datev/extf/booking_batch.py:200
+#: datev/connectors/datevconnect.py:43 datev/extf/booking_batch.py:200
 #, python-brace-format
 msgid "Booking {0} has no party account number."
 msgstr "Buchung {0} hat keine Personenkontonummer."
 
-#: datev/dispatch.py:180
+#: datev/dispatch.py:186
 #, python-brace-format
 msgid "Booking {0} is in a batch that is no longer awaiting approval."
 msgstr "Buchung {0} liegt in einem Buchungsstapel, der nicht mehr auf Freigabe wartet."
@@ -443,7 +443,7 @@ msgstr "DATEVconnect"
 msgid "DATEVconnect Client ID"
 msgstr "DATEVconnect-Mandanten-ID"
 
-#: datev/connectors/datevconnect.py:221
+#: datev/connectors/datevconnect.py:252
 msgid "DATEVconnect has no open fiscal year for this client."
 msgstr "DATEVconnect hat für diesen Mandanten kein offenes Wirtschaftsjahr."
 
@@ -472,7 +472,7 @@ msgstr "Debitor"
 msgid "Debtor Numbering"
 msgstr "Debitorennummerierung"
 
-#: datev/dispatch.py:235 datev/dispatch.py:259
+#: datev/dispatch.py:241 datev/dispatch.py:265
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr "Die Übergabe an DATEV ist unsicher. Prüfen Sie DATEV und klären Sie danach den Buchungsstapel."
 
@@ -571,12 +571,12 @@ msgstr "Belegtypen"
 msgid "Document type {0} is not defined for this client."
 msgstr "Der Belegtyp {0} ist für diesen Mandanten nicht definiert."
 
-#: datev/dispatch.py:35
+#: datev/dispatch.py:40
 #, python-brace-format
 msgid "Document {0} has no document link, which this client requires."
 msgstr "Beleg {0} hat keinen Beleglink, den dieser Mandant verlangt."
 
-#: datev/dispatch.py:32
+#: datev/dispatch.py:38
 #, python-brace-format
 msgid "Document {0} is not in DATEV yet (status {1})."
 msgstr "Beleg {0} ist noch nicht in DATEV (Status {1})."
@@ -694,10 +694,25 @@ msgstr "Beginn des Wirtschaftsjahres (Monat)"
 msgid "Fiscal year start month must be between 1 and 12."
 msgstr "Der Monat des Wirtschaftsjahresbeginns muss zwischen 1 und 12 liegen."
 
-#: datev/connectors/datevconnect.py:228
+#: datev/connectors/datevconnect.py:129
+#, python-brace-format
+msgid "Fiscal year {0} does not exist in DATEV."
+msgstr "Das Wirtschaftsjahr {0} existiert in DATEV nicht."
+
+#: datev/connectors/datevconnect.py:131
+#, python-brace-format
+msgid "Fiscal year {0} is locked in DATEV."
+msgstr "Das Wirtschaftsjahr {0} ist in DATEV gesperrt."
+
+#: datev/connectors/datevconnect.py:259
 #, python-brace-format
 msgid "Fiscal year {0}: {1}"
 msgstr "Wirtschaftsjahr {0}: {1}"
+
+#: datev/connectors/datevconnect.py:145
+#, python-brace-format
+msgid "Fiscal years could not be read from DATEVconnect: {0}"
+msgstr "Die Wirtschaftsjahre konnten nicht aus DATEVconnect gelesen werden: {0}"
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:311
@@ -866,7 +881,7 @@ msgstr "Aus Datei abgleichen"
 msgid "Message"
 msgstr "Meldung"
 
-#: datev/dispatch.py:28
+#: datev/dispatch.py:29
 #, python-brace-format
 msgid "Missing fields: {0}"
 msgstr "Fehlende Felder: {0}"
@@ -915,7 +930,7 @@ msgstr "Ohne Beleglink"
 msgid "No bookings are ready to send."
 msgstr "Es sind keine Buchungen versandbereit."
 
-#: datev/dispatch.py:191
+#: datev/dispatch.py:197
 msgid "No bookings left to send."
 msgstr "Es sind keine Buchungen mehr zu senden."
 
@@ -932,7 +947,7 @@ msgstr "Keine DATEV-Debitoren-/Kreditorendatei."
 msgid "Not in DATEV"
 msgstr "Nicht in DATEV"
 
-#: datev/connectors/datevconnect.py:171
+#: datev/connectors/datevconnect.py:202
 msgid "Not sent because an earlier request failed."
 msgstr "Nicht gesendet, weil eine vorherige Anfrage fehlgeschlagen ist."
 
@@ -945,7 +960,7 @@ msgstr "Benachrichtigt am"
 msgid "Numbering by DATEV requires the DATEVconnect master data connector."
 msgstr "Die Nummernvergabe durch DATEV erfordert den Stammdaten-Konnektor DATEVconnect."
 
-#: datev/dispatch.py:286
+#: datev/dispatch.py:292
 msgid "Only batches that are still sending can be resolved."
 msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 
@@ -953,7 +968,7 @@ msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr "Nur fehlerhafte oder zu klärende Personenkonten können erneut versucht werden."
 
-#: datev/dispatch.py:314
+#: datev/dispatch.py:320
 msgid "Only transferred, exported or failed bookings can be reset."
 msgstr "Nur übertragene, exportierte oder fehlgeschlagene Buchungen können zurückgesetzt werden."
 
@@ -1015,12 +1030,12 @@ msgstr "Name des Geschäftspartners"
 msgid "Party Type"
 msgstr "Typ des Geschäftspartners"
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:31
+#: datev/datev/doctype/datev_booking/datev_booking.py:33
 #, python-brace-format
 msgid "Party account {0} belongs to another client."
 msgstr "Personenkonto {0} gehört zu einem anderen Mandanten."
 
-#: datev/connectors/datevconnect.py:216
+#: datev/connectors/datevconnect.py:247
 #, python-brace-format
 msgid "Party account {0} has no account number."
 msgstr "Personenkonto {0} hat keine Kontonummer."
@@ -1030,7 +1045,7 @@ msgstr "Personenkonto {0} hat keine Kontonummer."
 msgid "Party account {0} has no preferred number from the source system."
 msgstr "Personenkonto {0} hat keine Wunschnummer aus dem Quellsystem."
 
-#: datev/dispatch.py:39
+#: datev/dispatch.py:44
 #, python-brace-format
 msgid "Party account {0} is not ready: {1}"
 msgstr "Personenkonto {0} ist nicht bereit: {1}"
@@ -1045,7 +1060,7 @@ msgstr "Passwort"
 msgid "Payment"
 msgstr "Zahlung"
 
-#: datev/connectors/datevconnect.py:134
+#: datev/connectors/datevconnect.py:124 datev/connectors/datevconnect.py:165
 msgid "Payments are not supported yet"
 msgstr "Zahlungen werden noch nicht unterstützt"
 
@@ -1095,7 +1110,7 @@ msgstr "Referenz-DocType"
 msgid "Reference Name"
 msgstr "Referenzname"
 
-#: datev/connectors/datevconnect.py:92 datev/connectors/datevconnect.py:227
+#: datev/connectors/datevconnect.py:97 datev/connectors/datevconnect.py:258
 msgid "Rejected by DATEVconnect."
 msgstr "Von DATEVconnect abgelehnt."
 
@@ -1112,7 +1127,7 @@ msgstr "Beleglink erforderlich"
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: datev/dispatch.py:317
+#: datev/dispatch.py:323
 #, python-brace-format
 msgid "Reset from {0}: {1}"
 msgstr "Zurückgesetzt von {0}: {1}"
@@ -1325,7 +1340,7 @@ msgstr "Der EXTF-Stammdaten-Konnektor erfordert einen EXTF-Export-Konnektor."
 msgid "The document is already in DATEV. Create a cancellation invoice instead."
 msgstr "Der Beleg ist bereits in DATEV. Erstellen Sie stattdessen eine Stornorechnung."
 
-#: datev/dispatch.py:252
+#: datev/dispatch.py:258
 msgid "The export connector returned no result."
 msgstr "Der Export-Konnektor hat kein Ergebnis zurückgegeben."
 
@@ -1444,7 +1459,7 @@ msgstr "Zeitpunkt des letzten Abgleichs der DATEV-Konten. EXTF-Mandanten prüfen
 msgid "Yes"
 msgstr "Ja"
 
-#: datev/dispatch.py:162
+#: datev/dispatch.py:168
 msgid "You are not allowed to approve batches of this client."
 msgstr "Sie dürfen Buchungsstapel dieses Mandanten nicht freigeben."
 
@@ -1453,7 +1468,7 @@ msgstr "Sie dürfen Buchungsstapel dieses Mandanten nicht freigeben."
 msgid "{0} account numbers must be between {1} and {2}."
 msgstr "{0}-Kontonummern müssen zwischen {1} und {2} liegen."
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:35
+#: datev/datev/doctype/datev_booking/datev_booking.py:36
 #, python-brace-format
 msgid "{0} bookings need a {1} party account."
 msgstr "Buchungen vom Typ {0} benötigen ein Personenkonto vom Typ {1}."
@@ -1483,7 +1498,7 @@ msgstr "{0} muss eine Zahl sein."
 msgid "{0} must be an integer."
 msgstr "{0} muss eine ganze Zahl sein."
 
-#: datev/dispatch.py:256
+#: datev/dispatch.py:262
 #, python-brace-format
 msgid "{0} sent, {1} failed."
 msgstr "{0} gesendet, {1} fehlgeschlagen."

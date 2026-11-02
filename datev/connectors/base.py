@@ -65,6 +65,9 @@ class ExportConnector(Connector, ABC):
 	@abstractmethod
 	def export(self, batch, bookings: list) -> ExportResult: ...
 
+	def check_booking(self, booking) -> str | None:
+		return None
+
 
 class MasterDataConnector(Connector, ABC):
 	creates_via_export: bool = False

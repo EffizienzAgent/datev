@@ -6,6 +6,7 @@ from frappe.utils import add_to_date, getdate, now_datetime
 
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
+from datev.connectors.datevconnect import clear_fiscal_year_cache
 from datev.events import log_event
 from datev.intake import BOOKING, OPEN_BOOKING_STATUSES
 from datev.parties import ensure_in_datev, set_status
@@ -27,11 +28,15 @@ def preflight(booking) -> str | None:
 	if missing:
 		return _("Missing fields: {0}").format(", ".join(missing))
 
+	client = frappe.get_doc(CLIENT, booking.client)
+	message = registry.get_export(client).check_booking(booking)
+	if message:
+		return message
+
 	document = frappe.get_doc(DOCUMENT, booking.document)
 	if document.status not in LINKED_STATUSES:
 		return _("Document {0} is not in DATEV yet (status {1}).").format(document.name, _(document.status))
-	require_link = frappe.db.get_value(CLIENT, booking.client, "require_document_link")
-	if require_link and not (document.status == "Uploaded" and document.external_id):
+	if client.require_document_link and not (document.status == "Uploaded" and document.external_id):
 		return _("Document {0} has no document link, which this client requires.").format(document.name)
 
 	party_account = frappe.get_doc(PARTY, booking.party_account)
@@ -85,6 +90,7 @@ def collect(client: str) -> str | None:
 	client_doc = frappe.get_doc(CLIENT, client)
 	if not client_doc.enabled:
 		return None
+	clear_fiscal_year_cache()
 	ready = []
 	for name in frappe.get_all(
 		BOOKING,

@@ -7,6 +7,7 @@ import requests
 from frappe.tests import IntegrationTestCase
 
 from datev import dispatch, intake
+from datev.clients.datevconnect import DATEVconnectError
 from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
 from datev.tests.factories import make_client as make_any_client
 from datev.tests.factories import make_document, make_party_account
@@ -279,6 +280,25 @@ class TestDispatch(IntegrationTestCase):
 		dispatch.hold(booking)
 		self.assertFalse(frappe.db.exists("DATEV Batch", batch))
 
+	def test_collect_skips_bookings_batched_meanwhile(self):
+		first = self.booking()
+		second = self.booking()
+
+		def preflight(booking):
+			if booking.name == second:
+				frappe.db.set_value("DATEV Booking", first, {"status": "Batched", "batch": "OTHER"})
+			return None
+
+		with patch("datev.dispatch.preflight", side_effect=preflight):
+			batch = dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", first, "batch"), "OTHER")
+		self.assertEqual(frappe.db.get_value("DATEV Booking", second, "batch"), batch)
+
+	def test_disabled_client_is_not_collected(self):
+		self.booking()
+		self.client_doc.db_set("enabled", 0)
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+
 	def test_send_twice_sends_once(self):
 		self.booking()
 		batch = dispatch.collect(self.client_doc.name)
@@ -497,6 +517,62 @@ class TestDispatch(IntegrationTestCase):
 			dispatch.hold(booking)
 
 
+DC_API = "datev.connectors.datevconnect.DATEVconnect"
+OPEN_YEARS = [{"id": "20260101", "is_locked": False}, {"id": "20270101", "is_locked": False}]
+
+
+class TestDATEVconnectPreflight(IntegrationTestCase):
+	def setUp(self):
+		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
+		self.client_doc = dc_client(approval_required=0)
+		self.party = make_party_account(self.client_doc, account_number=10001, sync_status="Imported")
+
+	def add(self, date, line_key="1", **values):
+		document = make_document(
+			self.client_doc, document_date=date, status="Uploaded", external_id="ID-1", program_code="BEDI"
+		)
+		values = {
+			"kind": "Outgoing Invoice",
+			"party_account": self.party.name,
+			"contra_account": 4400,
+			"amount": 119,
+			"debit_credit": "S",
+			**values,
+		}
+		return intake.add_booking(document.name, line_key, **values)
+
+	def message(self, booking):
+		return frappe.db.get_value("DATEV Booking", booking, ["status", "message"])
+
+	def test_fiscal_year_must_exist_and_be_open(self):
+		open_year = self.add("2027-01-05")
+		locked = self.add("2026-12-30")
+		missing = self.add("2028-01-05")
+		years = [{"id": "20260101", "is_locked": True}, {"id": "20270101"}]
+		with patch(f"{DC_API}.fiscal_years", return_value=years) as fiscal_years:
+			batch = dispatch.collect(self.client_doc.name)
+		fiscal_years.assert_called_once()
+		self.assertEqual(frappe.db.get_value("DATEV Booking", open_year, "batch"), batch)
+		self.assertEqual(self.message(locked), ("Stuck", "Fiscal year 20260101 is locked in DATEV."))
+		self.assertEqual(self.message(missing), ("Stuck", "Fiscal year 20280101 does not exist in DATEV."))
+
+	def test_unreadable_fiscal_years_mark_stuck(self):
+		booking = self.add("2027-01-05")
+		with patch(f"{DC_API}.fiscal_years", side_effect=DATEVconnectError("down", retryable=True)):
+			self.assertIsNone(dispatch.collect(self.client_doc.name))
+		status, message = self.message(booking)
+		self.assertEqual(status, "Stuck")
+		self.assertIn("down", message)
+
+	def test_payments_stuck_for_datevconnect(self):
+		booking = self.add("2027-01-05", kind="Payment")
+		with patch(f"{DC_API}.fiscal_years", return_value=OPEN_YEARS):
+			self.assertIsNone(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.message(booking), ("Stuck", "Payments are not supported yet"))
+
+
 class TestDATEVconnectUncertainGroup(IntegrationTestCase):
 	def setUp(self):
 		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
@@ -527,7 +603,8 @@ class TestDATEVconnectUncertainGroup(IntegrationTestCase):
 		self.delivered = add("2026-12-30")
 		self.uncertain = add("2027-01-05")
 		self.unbuildable = add("2027-01-06", bu_key="X1")
-		self.batch = dispatch.collect(self.client_doc.name)
+		with patch(f"{DC_API}.fiscal_years", return_value=OPEN_YEARS):
+			self.batch = dispatch.collect(self.client_doc.name)
 
 		def request(method, url, **kwargs):
 			if "/20260101/" in url:

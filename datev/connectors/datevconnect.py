@@ -23,6 +23,11 @@ PARTY_FIELDS = {"Outgoing Invoice": "debitor_account_number", "Incoming Invoice"
 POSITIVE = {("Outgoing Invoice", "S"), ("Incoming Invoice", "H")}
 PARTY_KINDS = {"Debtor": "debitors", "Creditor": "creditors"}
 DATEV_TIMEZONE = ZoneInfo("Europe/Berlin")
+FISCAL_YEAR_CACHE = "datev_fiscal_years"
+
+
+def clear_fiscal_year_cache() -> None:
+	setattr(frappe.local, FISCAL_YEAR_CACHE, {})
 
 
 def technical_factor(client) -> int:
@@ -114,6 +119,32 @@ class DATEVconnectMixin:
 
 
 class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
+	def check_booking(self, booking) -> str | None:
+		if booking.kind not in DIRECTIONS:
+			return _("Payments are not supported yet")
+		years = self.fiscal_years()
+		if isinstance(years, str):
+			return years
+		if booking.fiscal_year not in years:
+			return _("Fiscal year {0} does not exist in DATEV.").format(booking.fiscal_year)
+		if years[booking.fiscal_year]:
+			return _("Fiscal year {0} is locked in DATEV.").format(booking.fiscal_year)
+		return None
+
+	def fiscal_years(self) -> dict | str:
+		cache = getattr(frappe.local, FISCAL_YEAR_CACHE, None)
+		if cache is None:
+			cache = {}
+			setattr(frappe.local, FISCAL_YEAR_CACHE, cache)
+		if self.client.name not in cache:
+			try:
+				api = self.api()
+				years = api.fiscal_years(self.client_id(api))
+				cache[self.client.name] = {year["id"]: bool(year.get("is_locked")) for year in years}
+			except ConnectorError as e:
+				cache[self.client.name] = _("Fiscal years could not be read from DATEVconnect: {0}").format(e)
+		return cache[self.client.name]
+
 	def export(self, batch, bookings: list) -> ExportResult:
 		try:
 			api = self.api()

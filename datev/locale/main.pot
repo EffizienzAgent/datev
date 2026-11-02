@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:32+0000\n"
-"PO-Revision-Date: 2026-11-02 11:32+0000\n"
+"POT-Creation-Date: 2026-11-02 11:33+0000\n"
+"PO-Revision-Date: 2026-11-02 11:33+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: datev/dispatch.py:311
+#: datev/dispatch.py:317
 msgid "A reason is required to reset a booking."
 msgstr ""
 
@@ -157,27 +157,27 @@ msgstr ""
 msgid "Batched"
 msgstr ""
 
-#: datev/dispatch.py:178
+#: datev/dispatch.py:184
 #, python-brace-format
 msgid "Booking {0} cannot be held."
 msgstr ""
 
-#: datev/connectors/datevconnect.py:42
+#: datev/connectors/datevconnect.py:47
 #, python-brace-format
 msgid "Booking {0} has an invalid BU key."
 msgstr ""
 
-#: datev/connectors/datevconnect.py:40
+#: datev/connectors/datevconnect.py:45
 #, python-brace-format
 msgid "Booking {0} has no contra account."
 msgstr ""
 
-#: datev/connectors/datevconnect.py:38 datev/extf/booking_batch.py:200
+#: datev/connectors/datevconnect.py:43 datev/extf/booking_batch.py:200
 #, python-brace-format
 msgid "Booking {0} has no party account number."
 msgstr ""
 
-#: datev/dispatch.py:180
+#: datev/dispatch.py:186
 #, python-brace-format
 msgid "Booking {0} is in a batch that is no longer awaiting approval."
 msgstr ""
@@ -442,7 +442,7 @@ msgstr ""
 msgid "DATEVconnect Client ID"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:221
+#: datev/connectors/datevconnect.py:252
 msgid "DATEVconnect has no open fiscal year for this client."
 msgstr ""
 
@@ -471,7 +471,7 @@ msgstr ""
 msgid "Debtor Numbering"
 msgstr ""
 
-#: datev/dispatch.py:235 datev/dispatch.py:259
+#: datev/dispatch.py:241 datev/dispatch.py:265
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr ""
 
@@ -571,12 +571,12 @@ msgstr ""
 msgid "Document type {0} is not defined for this client."
 msgstr ""
 
-#: datev/dispatch.py:35
+#: datev/dispatch.py:40
 #, python-brace-format
 msgid "Document {0} has no document link, which this client requires."
 msgstr ""
 
-#: datev/dispatch.py:32
+#: datev/dispatch.py:38
 #, python-brace-format
 msgid "Document {0} is not in DATEV yet (status {1})."
 msgstr ""
@@ -694,9 +694,24 @@ msgstr ""
 msgid "Fiscal year start month must be between 1 and 12."
 msgstr ""
 
-#: datev/connectors/datevconnect.py:228
+#: datev/connectors/datevconnect.py:129
+#, python-brace-format
+msgid "Fiscal year {0} does not exist in DATEV."
+msgstr ""
+
+#: datev/connectors/datevconnect.py:131
+#, python-brace-format
+msgid "Fiscal year {0} is locked in DATEV."
+msgstr ""
+
+#: datev/connectors/datevconnect.py:259
 #, python-brace-format
 msgid "Fiscal year {0}: {1}"
+msgstr ""
+
+#: datev/connectors/datevconnect.py:145
+#, python-brace-format
+msgid "Fiscal years could not be read from DATEVconnect: {0}"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
@@ -866,7 +881,7 @@ msgstr ""
 msgid "Message"
 msgstr ""
 
-#: datev/dispatch.py:28
+#: datev/dispatch.py:29
 #, python-brace-format
 msgid "Missing fields: {0}"
 msgstr ""
@@ -915,7 +930,7 @@ msgstr ""
 msgid "No bookings are ready to send."
 msgstr ""
 
-#: datev/dispatch.py:191
+#: datev/dispatch.py:197
 msgid "No bookings left to send."
 msgstr ""
 
@@ -932,7 +947,7 @@ msgstr ""
 msgid "Not in DATEV"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:171
+#: datev/connectors/datevconnect.py:202
 msgid "Not sent because an earlier request failed."
 msgstr ""
 
@@ -945,7 +960,7 @@ msgstr ""
 msgid "Numbering by DATEV requires the DATEVconnect master data connector."
 msgstr ""
 
-#: datev/dispatch.py:286
+#: datev/dispatch.py:292
 msgid "Only batches that are still sending can be resolved."
 msgstr ""
 
@@ -953,7 +968,7 @@ msgstr ""
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr ""
 
-#: datev/dispatch.py:314
+#: datev/dispatch.py:320
 msgid "Only transferred, exported or failed bookings can be reset."
 msgstr ""
 
@@ -1015,12 +1030,12 @@ msgstr ""
 msgid "Party Type"
 msgstr ""
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:31
+#: datev/datev/doctype/datev_booking/datev_booking.py:33
 #, python-brace-format
 msgid "Party account {0} belongs to another client."
 msgstr ""
 
-#: datev/connectors/datevconnect.py:216
+#: datev/connectors/datevconnect.py:247
 #, python-brace-format
 msgid "Party account {0} has no account number."
 msgstr ""
@@ -1030,7 +1045,7 @@ msgstr ""
 msgid "Party account {0} has no preferred number from the source system."
 msgstr ""
 
-#: datev/dispatch.py:39
+#: datev/dispatch.py:44
 #, python-brace-format
 msgid "Party account {0} is not ready: {1}"
 msgstr ""
@@ -1045,7 +1060,7 @@ msgstr ""
 msgid "Payment"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:134
+#: datev/connectors/datevconnect.py:124 datev/connectors/datevconnect.py:165
 msgid "Payments are not supported yet"
 msgstr ""
 
@@ -1095,7 +1110,7 @@ msgstr ""
 msgid "Reference Name"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:92 datev/connectors/datevconnect.py:227
+#: datev/connectors/datevconnect.py:97 datev/connectors/datevconnect.py:258
 msgid "Rejected by DATEVconnect."
 msgstr ""
 
@@ -1112,7 +1127,7 @@ msgstr ""
 msgid "Reset"
 msgstr ""
 
-#: datev/dispatch.py:317
+#: datev/dispatch.py:323
 #, python-brace-format
 msgid "Reset from {0}: {1}"
 msgstr ""
@@ -1325,7 +1340,7 @@ msgstr ""
 msgid "The document is already in DATEV. Create a cancellation invoice instead."
 msgstr ""
 
-#: datev/dispatch.py:252
+#: datev/dispatch.py:258
 msgid "The export connector returned no result."
 msgstr ""
 
@@ -1444,7 +1459,7 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: datev/dispatch.py:162
+#: datev/dispatch.py:168
 msgid "You are not allowed to approve batches of this client."
 msgstr ""
 
@@ -1453,7 +1468,7 @@ msgstr ""
 msgid "{0} account numbers must be between {1} and {2}."
 msgstr ""
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:35
+#: datev/datev/doctype/datev_booking/datev_booking.py:36
 #, python-brace-format
 msgid "{0} bookings need a {1} party account."
 msgstr ""
@@ -1483,7 +1498,7 @@ msgstr ""
 msgid "{0} must be an integer."
 msgstr ""
 
-#: datev/dispatch.py:256
+#: datev/dispatch.py:262
 #, python-brace-format
 msgid "{0} sent, {1} failed."
 msgstr ""
