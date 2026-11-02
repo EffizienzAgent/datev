@@ -17,9 +17,12 @@ def _check_access():
 
 def _decimal(value, label: str) -> Decimal:
 	try:
-		return Decimal(str(value))
+		number = Decimal(str(value))
 	except InvalidOperation:
+		number = None
+	if number is None or not number.is_finite():
 		frappe.throw(_("{0} must be a number.").format(label))
+	return number
 
 
 def _optional_int(value, label: str) -> int | None:

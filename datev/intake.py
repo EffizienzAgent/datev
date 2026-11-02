@@ -26,7 +26,11 @@ def upsert_document(
 	source_name: str | None = None,
 	is_return: bool = False,
 ) -> str:
-	existing = frappe.db.get_value(DOCUMENT, {"source_key": source_key}, ["name", "status"], as_dict=True)
+	existing = frappe.db.get_value(
+		DOCUMENT, {"source_key": source_key}, ["name", "status", "client"], as_dict=True
+	)
+	if existing and existing.client != client:
+		frappe.throw(_("The source key {0} already belongs to another client.").format(source_key))
 	if existing and existing.status not in ("Pending", "Stuck"):
 		return existing.name
 

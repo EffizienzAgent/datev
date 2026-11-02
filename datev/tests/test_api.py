@@ -45,6 +45,33 @@ class TestApi(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			self.submit(amount="abc")
 
+	def test_non_finite_numbers_rejected(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.submit(amount="NaN")
+		party = api.submit_party(self.client_doc.name, "Debtor", "Example Party")
+		document, _values = self.submit()
+		with self.assertRaises(frappe.ValidationError):
+			api.submit_booking(
+				document["name"], "1", "Outgoing Invoice", party["name"], 8400, 119, "S", tax_rate="Infinity"
+			)
+
+	def test_user_without_roles_rejected(self):
+		user = frappe.get_doc(
+			{"doctype": "User", "email": "no-roles@example.com", "first_name": "No Roles"}
+		).insert(ignore_if_duplicate=True, ignore_permissions=True)
+		frappe.set_user(user.name)
+		with self.assertRaises(frappe.PermissionError):
+			api.status("anything")
+
+	def test_source_key_of_other_client_rejected(self):
+		result, values = self.submit()
+		other = make_client()
+		with self.assertRaises(frappe.ValidationError):
+			self.submit(client=other.name, source_key=values["source_key"])
+		self.assertEqual(
+			frappe.db.get_value("DATEV Document", result["name"], "client"), self.client_doc.name
+		)
+
 	def test_permission_required(self):
 		frappe.set_user("Guest")
 		with self.assertRaises(frappe.PermissionError):
