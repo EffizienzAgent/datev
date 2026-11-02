@@ -10,6 +10,11 @@ class DATEVPartyAccount(Document):
 		self.validate_unique_number()
 		self.validate_unique_party()
 		self.validate_number_range()
+		self.validate_settled_number()
+
+	def validate_settled_number(self):
+		if self.sync_status in ("Imported", "Created") and not (self.account_number or 0) > 0:
+			frappe.throw(_("Imported or created party accounts need an account number."))
 
 	def validate_unique_number(self):
 		if self.account_number:

@@ -97,6 +97,7 @@ def link_existing(party_account, remote: RemoteParty) -> bool:
 	message = _("DATEV account {0} already exists as {1}. Check the account and resolve it manually.").format(
 		remote.account_number, remote.name
 	)
+	party_account.account_number = 0
 	set_status(party_account, "To Clarify", message, "to_clarify")
 	return False
 
@@ -121,6 +122,7 @@ def import_existing(client: str, remote: list[RemoteParty] | None = None) -> dic
 		)
 	}
 	result = {"imported": 0, "to_clarify": 0, "unmatched": 0}
+	matches = []
 	for name in frappe.get_all(
 		PARTY,
 		filters={"client": client, "sync_status": ("not in", SETTLED)},
@@ -131,15 +133,26 @@ def import_existing(client: str, remote: list[RemoteParty] | None = None) -> dic
 		candidates = match_candidates(client_doc, party_account, remote)
 		if not candidates:
 			result["unmatched"] += 1
-			continue
-		if len(candidates) > 1:
+		elif len(candidates) > 1:
 			message = _("Several DATEV accounts match: {0}").format(describe(candidates))
 			mark_to_clarify(party_account, message, result)
-			continue
-		candidate = candidates[0]
-		owner = linked.get((candidate.kind, candidate.account_number))
+		else:
+			matches.append((party_account, candidates[0]))
+
+	claimants = {}
+	for party_account, candidate in matches:
+		claimants.setdefault((candidate.kind, candidate.account_number), []).append(party_account.name)
+
+	for party_account, candidate in matches:
+		key = (candidate.kind, candidate.account_number)
+		competitors = [name for name in claimants[key] if name != party_account.name]
+		owner = linked.get(key)
 		if owner and owner != party_account.name:
-			message = _("DATEV account {0} is already linked to {1}.").format(describe(candidates), owner)
+			competitors.append(owner)
+		if competitors:
+			message = _("DATEV account {0} is also claimed by {1}.").format(
+				describe([candidate]), ", ".join(competitors)
+			)
 			mark_to_clarify(party_account, message, result)
 			continue
 		try:
@@ -149,7 +162,6 @@ def import_existing(client: str, remote: list[RemoteParty] | None = None) -> dic
 			party_account.reload()
 			mark_to_clarify(party_account, str(error), result)
 			continue
-		linked[(candidate.kind, candidate.account_number)] = party_account.name
 		result["imported"] += 1
 	return result
 

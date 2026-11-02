@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from datev.connectors.base import RemoteParty
+from datev.connectors.base import ConnectorError, RemoteParty
 from datev.extf import master_data
 from datev.intake import ensure_party_account
 from datev.parties import assign_number, clear_remote_cache, ensure_in_datev, import_existing, normalize_name
@@ -108,6 +108,7 @@ class TestPartyAccounts(IntegrationTestCase):
 		other.reload()
 		same.reload()
 		self.assertEqual(other.sync_status, "To Clarify")
+		self.assertFalse(other.account_number)
 		self.assertIn("Ganz Andere KG", other.message)
 		self.assertEqual((same.account_number, same.sync_status), (10061, "Imported"))
 
@@ -121,6 +122,31 @@ class TestPartyAccounts(IntegrationTestCase):
 		account.reload()
 		self.assertEqual(account.sync_status, "Error")
 		self.assertIn("DATEV unreachable", account.message)
+
+	def test_ensure_in_datev_create_error(self):
+		account = make_party_account(self.client, preferred_number=10140)
+		connector = fake_connector()
+		connector.create_party.side_effect = ConnectorError("Rejected by DATEVconnect")
+		with use_connector(connector):
+			self.assertFalse(ensure_in_datev(account))
+		account.reload()
+		self.assertEqual((account.account_number, account.sync_status), (10140, "Error"))
+		self.assertIn("Rejected by DATEVconnect", account.message)
+
+	def test_settled_status_requires_number(self):
+		with self.assertRaises(frappe.ValidationError):
+			make_party_account(self.client, sync_status="Imported")
+
+	def test_import_competing_locals_to_clarify(self):
+		first = make_party_account(self.client, party_name="Muster GmbH")
+		second = make_party_account(self.client, party_name="Muster GmbH")
+		result = import_existing(self.client.name, [RemoteParty("Debtor", 10150, "Muster GmbH")])
+		self.assertEqual(result, {"imported": 0, "to_clarify": 2, "unmatched": 0})
+		for account, competitor in ((first, second), (second, first)):
+			account.reload()
+			self.assertEqual(account.sync_status, "To Clarify")
+			self.assertFalse(account.account_number)
+			self.assertIn(competitor.name, account.message)
 
 	def test_import_by_number(self):
 		account = make_party_account(self.client, preferred_number=10070, party_name="Lokal")
