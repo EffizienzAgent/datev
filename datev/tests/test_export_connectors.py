@@ -468,6 +468,21 @@ class TestExtfConnectors(IntegrationTestCase):
 		result = ExtfDownloadExport(self.client).export(self.batch, self.bookings)
 		self.assertEqual(len(result.files), 1)
 
+	def test_master_data_per_fiscal_year(self):
+		december = make_booking(make_document(self.client, document_date="2026-12-30"), self.new_party)
+		january = make_booking(make_document(self.client, document_date="2027-01-05"), self.new_party)
+		result = ExtfDownloadExport(self.client).export(self.batch, [december, january])
+		files = self.attached_files()
+		master = [f for f in files if f.file_name.startswith("EXTF_Debitoren_Kreditoren_")]
+		self.assertEqual(len(result.files), 4)
+		self.assertEqual(sorted(f.file_name.split("_")[4] for f in master), ["20260101", "20270101"])
+		for file in master:
+			content = frappe.get_doc("File", {"file_url": file.file_url}).get_content()
+			content = content if isinstance(content, bytes) else content.encode("cp1252")
+			header = content.split(b"\r\n")[0].split(b";")
+			self.assertEqual(header[12].decode(), file.file_name.split("_")[4])
+			self.assertIn(b"10001;", content)
+
 	@patch("frappe.sendmail")
 	def test_extf_email_sends(self, sendmail):
 		result = ExtfEmailExport(self.client).export(self.batch, self.bookings)

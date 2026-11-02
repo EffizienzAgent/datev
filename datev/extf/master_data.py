@@ -1,7 +1,7 @@
 import codecs
 import csv
 import io
-from datetime import datetime
+from datetime import date, datetime
 
 import frappe
 from frappe import _
@@ -271,14 +271,14 @@ CREDITOR_FIRST_GROUP = 7
 COMPANY = "2"
 
 
-def build(client, party_accounts: list, created: datetime) -> bytes:
+def build(client, party_accounts: list, created: datetime, year_start: date | None = None) -> bytes:
 	header_row = header.row(
 		client,
 		category=16,
 		format_name="Debitoren/Kreditoren",
 		format_version=5,
 		created=created,
-		fiscal_year_start=fiscal_year_start(client.name, created.date()),
+		fiscal_year_start=year_start or fiscal_year_start(client.name, created.date()),
 		date_from=None,
 		date_to=None,
 		description="",

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:31+0000\n"
+"POT-Creation-Date: 2026-11-02 11:32+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -51,7 +51,7 @@ msgstr "Die Sachkontenlänge muss zwischen 4 und 8 liegen."
 msgid "Account number {0} is already in use."
 msgstr "Die Kontonummer {0} wird bereits verwendet."
 
-#: datev/connectors/extf.py:90
+#: datev/connectors/extf.py:98
 msgid "Account numbers cannot be requested from DATEV via EXTF."
 msgstr "Kontonummern können über EXTF nicht bei DATEV angefragt werden."
 
@@ -413,7 +413,7 @@ msgstr "Das DATEV-Konto {0} existiert bereits als {1}. Prüfen Sie das Konto und
 msgid "DATEV account {0} is also claimed by {1}."
 msgstr "Das DATEV-Konto {0} wird auch von {1} beansprucht."
 
-#: datev/connectors/extf.py:76
+#: datev/connectors/extf.py:84
 #, python-brace-format
 msgid "DATEV booking batch {0}"
 msgstr "DATEV Buchungsstapel {0}"
@@ -902,7 +902,7 @@ msgstr "Nein"
 msgid "No DATEVconnect client {0}/{1}"
 msgstr "Kein DATEVconnect-Mandant {0}/{1}"
 
-#: datev/connectors/extf.py:70
+#: datev/connectors/extf.py:78
 msgid "No EXTF e-mail address is set for this client."
 msgstr "Für diesen Mandanten ist keine EXTF-E-Mail-Adresse hinterlegt."
 
@@ -1307,7 +1307,7 @@ msgstr "Steuerkennzeichen"
 msgid "Tax rate"
 msgstr "Steuersatz"
 
-#: datev/connectors/extf.py:77
+#: datev/connectors/extf.py:85
 #, python-brace-format
 msgid "The EXTF files of DATEV booking batch {0} are attached."
 msgstr "Die EXTF-Dateien des DATEV-Buchungsstapels {0} sind angehängt."
@@ -1384,7 +1384,7 @@ msgstr "Unerwartete Antwort von DATEVconnect."
 msgid "Unknown connector: {0}"
 msgstr "Unbekannter Konnektor: {0}"
 
-#: datev/connectors/extf.py:87
+#: datev/connectors/extf.py:95
 msgid "Upload a master data export from DATEV to match existing accounts."
 msgstr "Laden Sie einen Stammdatenexport aus DATEV hoch, um bestehende Konten abzugleichen."
 

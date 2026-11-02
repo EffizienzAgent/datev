@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
@@ -32,18 +34,24 @@ class ExtfDownloadExport(ExportConnector):
 	def build_files(self, batch, bookings: list) -> list[tuple[str, bytes]]:
 		created = now_datetime()
 		files = booking_batch.build(self.client, bookings, created, batch.name)
-		parties = frappe.get_all(
-			"DATEV Party Account",
-			filters={
-				"name": ("in", {booking.party_account for booking in bookings}),
-				"sync_status": "New",
-			},
-			fields=["name", "account_number", "party_name", "vat_id", "iban"],
-			order_by="account_number asc",
-		)
-		if parties:
-			name = f"EXTF_Debitoren_Kreditoren_{self.client.client_number}_{yyyymmdd(created.date())}.csv"
-			files.append((name, master_data.build(self.client, parties, created)))
+		groups = {}
+		for booking in bookings:
+			groups.setdefault(booking.fiscal_year, set()).add(booking.party_account)
+		for fiscal_year, names in sorted(groups.items()):
+			parties = frappe.get_all(
+				"DATEV Party Account",
+				filters={"name": ("in", names), "sync_status": "New"},
+				fields=["name", "account_number", "party_name", "vat_id", "iban"],
+				order_by="account_number asc",
+			)
+			if not parties:
+				continue
+			year_start = datetime.strptime(fiscal_year, "%Y%m%d").date()
+			name = (
+				f"EXTF_Debitoren_Kreditoren_{self.client.client_number}_{fiscal_year}_"
+				f"{yyyymmdd(created.date())}.csv"
+			)
+			files.append((name, master_data.build(self.client, parties, created, year_start)))
 		return files
 
 	@staticmethod

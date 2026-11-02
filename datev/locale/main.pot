@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:31+0000\n"
-"PO-Revision-Date: 2026-11-02 11:31+0000\n"
+"POT-Creation-Date: 2026-11-02 11:32+0000\n"
+"PO-Revision-Date: 2026-11-02 11:32+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
@@ -49,7 +49,7 @@ msgstr ""
 msgid "Account number {0} is already in use."
 msgstr ""
 
-#: datev/connectors/extf.py:90
+#: datev/connectors/extf.py:98
 msgid "Account numbers cannot be requested from DATEV via EXTF."
 msgstr ""
 
@@ -411,7 +411,7 @@ msgstr ""
 msgid "DATEV account {0} is also claimed by {1}."
 msgstr ""
 
-#: datev/connectors/extf.py:76
+#: datev/connectors/extf.py:84
 #, python-brace-format
 msgid "DATEV booking batch {0}"
 msgstr ""
@@ -902,7 +902,7 @@ msgstr ""
 msgid "No DATEVconnect client {0}/{1}"
 msgstr ""
 
-#: datev/connectors/extf.py:70
+#: datev/connectors/extf.py:78
 msgid "No EXTF e-mail address is set for this client."
 msgstr ""
 
@@ -1307,7 +1307,7 @@ msgstr ""
 msgid "Tax rate"
 msgstr ""
 
-#: datev/connectors/extf.py:77
+#: datev/connectors/extf.py:85
 #, python-brace-format
 msgid "The EXTF files of DATEV booking batch {0} are attached."
 msgstr ""
@@ -1384,7 +1384,7 @@ msgstr ""
 msgid "Unknown connector: {0}"
 msgstr ""
 
-#: datev/connectors/extf.py:87
+#: datev/connectors/extf.py:95
 msgid "Upload a master data export from DATEV to match existing accounts."
 msgstr ""
 
