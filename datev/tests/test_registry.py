@@ -7,6 +7,10 @@ from frappe.tests import IntegrationTestCase
 from datev import http
 from datev.connectors import registry
 from datev.connectors.base import StorageConnector, StorageResult
+from datev.connectors.business_os import BusinessOSStorage
+from datev.connectors.datevconnect import DATEVconnectExport, DATEVconnectMasterData
+from datev.connectors.duo_email import DuoEmailStorage
+from datev.connectors.extf import ExtfDownloadExport, ExtfEmailExport, ExtfMasterData
 from datev.tests.factories import make_client
 
 
@@ -66,3 +70,19 @@ class TestRegistry(IntegrationTestCase):
 		with patch("frappe.get_hooks", fake_hooks):
 			with self.assertRaises(frappe.ValidationError):
 				registry.get_storage(client)
+
+	def test_builtin_labels_resolve(self):
+		client = make_client()
+		cases = [
+			(registry.get_storage, "storage_connector", "Business OS", BusinessOSStorage),
+			(registry.get_storage, "storage_connector", "E-mail to DUo", DuoEmailStorage),
+			(registry.get_export, "export_connector", "DATEVconnect", DATEVconnectExport),
+			(registry.get_export, "export_connector", "EXTF download", ExtfDownloadExport),
+			(registry.get_export, "export_connector", "EXTF e-mail", ExtfEmailExport),
+			(registry.get_master_data, "master_data_connector", "DATEVconnect", DATEVconnectMasterData),
+			(registry.get_master_data, "master_data_connector", "EXTF", ExtfMasterData),
+		]
+		for resolve, fieldname, label, cls in cases:
+			with self.subTest(label=label):
+				client.set(fieldname, label)
+				self.assertIs(type(resolve(client)), cls)
