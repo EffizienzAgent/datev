@@ -51,6 +51,8 @@ class Connector:
 
 
 class StorageConnector(Connector, ABC):
+	min_interval: int = 0
+
 	@abstractmethod
 	def upload(self, document) -> StorageResult: ...
 

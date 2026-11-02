@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:38+0000\n"
+"POT-Creation-Date: 2026-11-02 18:40+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -203,6 +203,11 @@ msgstr "Business OS"
 #: datev/datev/report/datev_status/datev_status.py:40
 msgid "Business OS Credits"
 msgstr "Business-OS-Guthaben"
+
+#: datev/connectors/business_os.py:37
+#, python-brace-format
+msgid "Business OS stored the document as {0} instead of {1}, so the document link would be wrong. Check DUo, then mark the document as uploaded."
+msgstr "Business OS hat den Beleg als {0} statt {1} gespeichert, der Beleglink wäre daher falsch. Prüfen Sie DUo und markieren Sie den Beleg dann als hochgeladen."
 
 #. Label of the category (Data) field in DocType 'DATEV Document Type Option'
 #: datev/datev/doctype/datev_document_type_option/datev_document_type_option.json:28
@@ -556,6 +561,10 @@ msgstr "Belegdatum"
 msgid "Document Field 1"
 msgstr "Belegfeld 1"
 
+#: datev/datev/doctype/datev_document/datev_document.js:20
+msgid "Document ID in DUo"
+msgstr "Beleg-ID in DUo"
+
 #. Label of the document_number (Data) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:115
 msgid "Document Number"
@@ -720,7 +729,7 @@ msgstr "Datei"
 msgid "File Name"
 msgstr "Dateiname"
 
-#: datev/dispatch.py:364
+#: datev/dispatch.py:365
 msgid "Files are not delivered to DATEV directly. Mark the batch as not delivered to export it again."
 msgstr "Dateien werden nicht direkt an DATEV übermittelt. Markieren Sie den Buchungsstapel als nicht übermittelt, um ihn erneut zu exportieren."
 
@@ -883,6 +892,11 @@ msgstr "Zuordnungen"
 msgid "Mark all bookings of this batch as delivered to DATEV?"
 msgstr "Alle Buchungen dieses Buchungsstapels als an DATEV übergeben markieren?"
 
+#: datev/datev/doctype/datev_document/datev_document.js:14
+#: datev/datev/doctype/datev_document/datev_document.js:30
+msgid "Mark as uploaded"
+msgstr "Als hochgeladen markieren"
+
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:18
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:49
 msgid "Mark resolved"
@@ -891,6 +905,11 @@ msgstr "Als geklärt markieren"
 #: datev/datev/doctype/datev_batch/datev_batch.js:52
 msgid "Mark this batch as not delivered? Its bookings will be sent again."
 msgstr "Diesen Buchungsstapel als nicht übergeben markieren? Seine Buchungen werden erneut gesendet."
+
+#: datev/documents.py:156
+#, python-brace-format
+msgid "Marked as uploaded as {0}: {1}"
+msgstr "Als hochgeladen markiert mit {0}: {1}"
 
 #: datev/parties.py:187
 #, python-brace-format
@@ -1027,7 +1046,7 @@ msgstr "Die Nummernvergabe durch DATEV erfordert den Stammdaten-Konnektor DATEVc
 msgid "Only batches that are still sending can be resolved."
 msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 
-#: datev/dispatch.py:390
+#: datev/dispatch.py:392
 msgid "Only exported EXTF batches can be confirmed as imported."
 msgstr "Nur exportierte EXTF-Buchungsstapel können als importiert bestätigt werden."
 
@@ -1042,6 +1061,10 @@ msgstr "Nur zu klärende Personenkonten können als geklärt markiert werden."
 #: datev/parties.py:143
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr "Nur fehlerhafte oder zu klärende Personenkonten können erneut versucht werden."
+
+#: datev/documents.py:145
+msgid "Only stuck documents can be marked as uploaded."
+msgstr "Nur blockierte Belege können als hochgeladen markiert werden."
 
 #: datev/dispatch.py:418
 msgid "Only transferred, exported or failed bookings can be reset."
@@ -1171,6 +1194,7 @@ msgid "Program Code"
 msgstr "Programmkürzel"
 
 #: datev/datev/doctype/datev_booking/datev_booking.js:23
+#: datev/datev/doctype/datev_document/datev_document.js:23
 msgid "Reason"
 msgstr "Begründung"
 
@@ -1240,6 +1264,10 @@ msgstr "Verantwortlicher Benutzer"
 msgid "Retry"
 msgstr "Erneut versuchen"
 
+#: datev/datev/doctype/datev_document/datev_document.js:6
+msgid "Retry upload"
+msgstr "Upload erneut versuchen"
+
 #: datev/datev/doctype/datev_client/datev_client.py:64
 #, python-brace-format
 msgid "Row {0}: BU key must have at most four digits."
@@ -1270,6 +1298,7 @@ msgstr "SKR04"
 msgid "Saturday"
 msgstr "Samstag"
 
+#: datev/datev/doctype/datev_document/datev_document.js:31
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:50
 msgid "Save"
 msgstr "Speichern"
@@ -1415,6 +1444,10 @@ msgstr "Steuerkennzeichen {0} hat keine Zeile in den Steuerschlüsseln des DATEV
 msgid "Tax rate"
 msgstr "Steuersatz"
 
+#: datev/documents.py:142
+msgid "The DUo document ID and a reason are required."
+msgstr "Die Beleg-ID in DUo und eine Begründung sind erforderlich."
+
 #: datev/connectors/extf.py:102
 #, python-brace-format
 msgid "The EXTF files of DATEV booking batch {0} are attached."
@@ -1501,7 +1534,7 @@ msgstr "Unbekannter Konnektor: {0}"
 msgid "Upload a master data export from DATEV to match existing accounts."
 msgstr "Laden Sie einen Stammdatenexport aus DATEV hoch, um bestehende Konten abzugleichen."
 
-#: datev/connectors/business_os.py:28
+#: datev/connectors/business_os.py:30
 msgid "Upload may have reached DATEV. Check DUo before retrying."
 msgstr "Der Upload ist möglicherweise bei DATEV angekommen. Prüfen Sie DUo, bevor Sie es erneut versuchen."
 

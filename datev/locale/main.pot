@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:38+0000\n"
-"PO-Revision-Date: 2026-11-02 18:38+0000\n"
+"POT-Creation-Date: 2026-11-02 18:40+0000\n"
+"PO-Revision-Date: 2026-11-02 18:40+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
@@ -200,6 +200,11 @@ msgstr ""
 
 #: datev/datev/report/datev_status/datev_status.py:40
 msgid "Business OS Credits"
+msgstr ""
+
+#: datev/connectors/business_os.py:37
+#, python-brace-format
+msgid "Business OS stored the document as {0} instead of {1}, so the document link would be wrong. Check DUo, then mark the document as uploaded."
 msgstr ""
 
 #. Label of the category (Data) field in DocType 'DATEV Document Type Option'
@@ -555,6 +560,10 @@ msgstr ""
 msgid "Document Field 1"
 msgstr ""
 
+#: datev/datev/doctype/datev_document/datev_document.js:20
+msgid "Document ID in DUo"
+msgstr ""
+
 #. Label of the document_number (Data) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:115
 msgid "Document Number"
@@ -720,7 +729,7 @@ msgstr ""
 msgid "File Name"
 msgstr ""
 
-#: datev/dispatch.py:364
+#: datev/dispatch.py:365
 msgid "Files are not delivered to DATEV directly. Mark the batch as not delivered to export it again."
 msgstr ""
 
@@ -883,6 +892,11 @@ msgstr ""
 msgid "Mark all bookings of this batch as delivered to DATEV?"
 msgstr ""
 
+#: datev/datev/doctype/datev_document/datev_document.js:14
+#: datev/datev/doctype/datev_document/datev_document.js:30
+msgid "Mark as uploaded"
+msgstr ""
+
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:18
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:49
 msgid "Mark resolved"
@@ -890,6 +904,11 @@ msgstr ""
 
 #: datev/datev/doctype/datev_batch/datev_batch.js:52
 msgid "Mark this batch as not delivered? Its bookings will be sent again."
+msgstr ""
+
+#: datev/documents.py:156
+#, python-brace-format
+msgid "Marked as uploaded as {0}: {1}"
 msgstr ""
 
 #: datev/parties.py:187
@@ -1027,7 +1046,7 @@ msgstr ""
 msgid "Only batches that are still sending can be resolved."
 msgstr ""
 
-#: datev/dispatch.py:390
+#: datev/dispatch.py:392
 msgid "Only exported EXTF batches can be confirmed as imported."
 msgstr ""
 
@@ -1041,6 +1060,10 @@ msgstr ""
 
 #: datev/parties.py:143
 msgid "Only party accounts with an error or to clarify can be retried."
+msgstr ""
+
+#: datev/documents.py:145
+msgid "Only stuck documents can be marked as uploaded."
 msgstr ""
 
 #: datev/dispatch.py:418
@@ -1171,6 +1194,7 @@ msgid "Program Code"
 msgstr ""
 
 #: datev/datev/doctype/datev_booking/datev_booking.js:23
+#: datev/datev/doctype/datev_document/datev_document.js:23
 msgid "Reason"
 msgstr ""
 
@@ -1240,6 +1264,10 @@ msgstr ""
 msgid "Retry"
 msgstr ""
 
+#: datev/datev/doctype/datev_document/datev_document.js:6
+msgid "Retry upload"
+msgstr ""
+
 #: datev/datev/doctype/datev_client/datev_client.py:64
 #, python-brace-format
 msgid "Row {0}: BU key must have at most four digits."
@@ -1270,6 +1298,7 @@ msgstr ""
 msgid "Saturday"
 msgstr ""
 
+#: datev/datev/doctype/datev_document/datev_document.js:31
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:50
 msgid "Save"
 msgstr ""
@@ -1415,6 +1444,10 @@ msgstr ""
 msgid "Tax rate"
 msgstr ""
 
+#: datev/documents.py:142
+msgid "The DUo document ID and a reason are required."
+msgstr ""
+
 #: datev/connectors/extf.py:102
 #, python-brace-format
 msgid "The EXTF files of DATEV booking batch {0} are attached."
@@ -1501,7 +1534,7 @@ msgstr ""
 msgid "Upload a master data export from DATEV to match existing accounts."
 msgstr ""
 
-#: datev/connectors/business_os.py:28
+#: datev/connectors/business_os.py:30
 msgid "Upload may have reached DATEV. Check DUo before retrying."
 msgstr ""
 

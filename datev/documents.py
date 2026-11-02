@@ -1,8 +1,11 @@
 import frappe
+from frappe import _
 from frappe.utils import add_to_date, now_datetime
 
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
+from datev.connectors.business_os import PROGRAM_CODE
+from datev.document_types import DocumentTypeError, resolve
 from datev.events import log_event
 from datev.protect import internal
 
@@ -20,8 +23,12 @@ def upload(name: str) -> None:
 	client = frappe.get_doc("DATEV Client", document.client)
 	if not client.enabled:
 		return
+	connector = registry.get_storage(client)
+	if not take_slot(client.name, connector.min_interval):
+		document.db_set("next_attempt", add_to_date(now_datetime(), seconds=connector.min_interval))
+		return
 	try:
-		result = registry.get_storage(client).upload(document)
+		result = connector.upload(document)
 	except ConnectorError as error:
 		handle_failure(document, error)
 		return
@@ -39,18 +46,33 @@ def upload(name: str) -> None:
 	log_event(DOCUMENT, name, "uploaded", response=result.response)
 
 
+def take_slot(client: str, interval: int) -> bool:
+	if not interval:
+		return True
+	key = frappe.cache.make_key(f"datev:upload-slot:{client}")
+	return bool(frappe.cache.set(key, 1, ex=interval, nx=True))
+
+
+def update_pending(name: str, values: dict) -> bool:
+	table = frappe.qb.DocType(DOCUMENT)
+	query = frappe.qb.update(table).set(table.modified, now_datetime())
+	for field, value in values.items():
+		query = query.set(table[field], value)
+	query.where((table.name == name) & (table.status == "Pending")).run()
+	return frappe.db._cursor.rowcount > 0
+
+
 def handle_failure(document, error: ConnectorError) -> None:
-	document.attempts = (document.attempts or 0) + 1
-	document.message = str(error)
-	if error.retryable and document.attempts < MAX_ATTEMPTS:
-		document.next_attempt = add_to_date(now_datetime(), minutes=BACKOFF_MINUTES[document.attempts - 1])
+	attempts = (document.attempts or 0) + 1
+	values = {"attempts": attempts, "message": str(error)}
+	if error.retryable and attempts < MAX_ATTEMPTS:
+		values["next_attempt"] = add_to_date(now_datetime(), minutes=BACKOFF_MINUTES[attempts - 1])
 		event = "upload_retry"
 	else:
-		document.status = "Stuck"
-		document.next_attempt = None
+		values.update({"status": "Stuck", "next_attempt": None})
 		event = "upload_failed"
-	internal(document).save(ignore_permissions=True)
-	log_event(DOCUMENT, document.name, event, str(error), error.response)
+	if update_pending(document.name, values):
+		log_event(DOCUMENT, document.name, event, str(error), error.response)
 
 
 def retry_due() -> None:
@@ -82,16 +104,55 @@ def retry_due() -> None:
 
 
 def mark_stuck(name: str, message: str) -> None:
-	frappe.db.set_value(DOCUMENT, name, {"status": "Stuck", "next_attempt": None, "message": message})
-	log_event(DOCUMENT, name, "upload_failed", message)
+	if update_pending(name, {"status": "Stuck", "next_attempt": None, "message": message}):
+		log_event(DOCUMENT, name, "upload_failed", message)
 
 
 @frappe.whitelist(methods=["POST"])
 def retry(name: str) -> None:
 	frappe.only_for(["DATEV User", "DATEV Manager"])
-	if frappe.db.get_value(DOCUMENT, name, "status") != "Stuck":
+	document = frappe.get_doc(DOCUMENT, name, for_update=True)
+	if document.status != "Stuck":
 		return
-	frappe.db.set_value(
-		DOCUMENT, name, {"status": "Pending", "attempts": 0, "next_attempt": None, "message": ""}
+	client = frappe.get_doc("DATEV Client", document.client)
+	try:
+		document_type = resolve(client, document.direction, document.source_doctype, document.is_return)
+	except DocumentTypeError as error:
+		document.db_set("message", str(error))
+		raise
+	document.update(
+		{
+			"document_type": document_type,
+			"status": "Pending",
+			"attempts": 0,
+			"next_attempt": None,
+			"message": "",
+		}
 	)
-	upload(name)
+	internal(document).save(ignore_permissions=True)
+	log_event(DOCUMENT, name, "retried")
+	frappe.enqueue("datev.documents.upload", name=name, queue="short", enqueue_after_commit=True)
+
+
+@frappe.whitelist(methods=["POST"])
+def mark_uploaded(name: str, external_id: str, reason: str) -> None:
+	frappe.only_for("DATEV Manager")
+	external_id, reason = (external_id or "").strip(), (reason or "").strip()
+	if not external_id or not reason:
+		frappe.throw(_("The DUo document ID and a reason are required."))
+	document = frappe.get_doc(DOCUMENT, name, for_update=True)
+	if document.status != "Stuck":
+		frappe.throw(_("Only stuck documents can be marked as uploaded."))
+	document.update(
+		{
+			"external_id": external_id,
+			"program_code": PROGRAM_CODE,
+			"status": "Uploaded",
+			"message": "",
+			"next_attempt": None,
+		}
+	)
+	internal(document).save(ignore_permissions=True)
+	log_event(
+		DOCUMENT, name, "marked_uploaded", _("Marked as uploaded as {0}: {1}").format(external_id, reason)
+	)

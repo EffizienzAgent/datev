@@ -90,4 +90,5 @@ class BusinessOS:
 			status=response.status,
 			retryable=response.status in RETRYABLE_STATUS or response.status >= 500,
 			response=response.data,
+			maybe_sent=response.status >= 500,
 		)
