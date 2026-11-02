@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/EffizienzAgent/datev/compare/v0.1.0...v0.2.0) (2026-11-02)
+
+
+### Features
+
+* datev core 0.2.0 hardening ([#3](https://github.com/EffizienzAgent/datev/issues/3)) ([84ce632](https://github.com/EffizienzAgent/datev/commit/84ce632bf10970007308379ebb32a4005fd9bf3e))
+
+
+### Documentation
+
+* link the ERPNext adapter and related apps ([afee495](https://github.com/EffizienzAgent/datev/commit/afee495cbaf321c355f944ada9d0bea5219e4a79))
+
 ## [0.1.0](https://github.com/EffizienzAgent/datev/compare/v0.1.0...v0.1.0) (2026-11-02)
 
 
