@@ -1,0 +1,170 @@
+{
+ "docstatus": 0,
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "DATEV",
+ "custom": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "name": "DATEV Booking",
+ "autoname": "hash",
+ "permissions": [
+  {
+   "role": "DATEV Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1
+  },
+  {
+   "role": "DATEV User",
+   "read": 1,
+   "write": 1,
+   "report": 1
+  }
+ ],
+ "field_order": [
+  "client",
+  "document",
+  "line_key",
+  "kind",
+  "party_account",
+  "contra_account",
+  "debit_credit",
+  "amount",
+  "currency",
+  "bu_key",
+  "tax_rate",
+  "posting_text",
+  "document_date",
+  "document_field_1",
+  "due_date",
+  "fiscal_year",
+  "status",
+  "held",
+  "batch",
+  "message"
+ ],
+ "fields": [
+  {
+   "fieldname": "client",
+   "fieldtype": "Link",
+   "label": "Client",
+   "options": "DATEV Client",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "document",
+   "fieldtype": "Link",
+   "label": "Document",
+   "options": "DATEV Document",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "line_key",
+   "fieldtype": "Data",
+   "label": "Line Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Kind",
+   "options": "Outgoing Invoice\nIncoming Invoice\nPayment",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "party_account",
+   "fieldtype": "Link",
+   "label": "Party Account",
+   "options": "DATEV Party Account"
+  },
+  {
+   "fieldname": "contra_account",
+   "fieldtype": "Int",
+   "label": "Contra Account"
+  },
+  {
+   "fieldname": "debit_credit",
+   "fieldtype": "Select",
+   "label": "Debit/Credit",
+   "options": "S\nH"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency"
+  },
+  {
+   "fieldname": "bu_key",
+   "fieldtype": "Data",
+   "label": "BU Key"
+  },
+  {
+   "fieldname": "tax_rate",
+   "fieldtype": "Float",
+   "label": "Tax Rate"
+  },
+  {
+   "fieldname": "posting_text",
+   "fieldtype": "Data",
+   "label": "Posting Text"
+  },
+  {
+   "fieldname": "document_date",
+   "fieldtype": "Date",
+   "label": "Document Date"
+  },
+  {
+   "fieldname": "document_field_1",
+   "fieldtype": "Data",
+   "label": "Document Field 1"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "fiscal_year",
+   "fieldtype": "Data",
+   "label": "Fiscal Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nBatched\nStuck\nTransferred\nExported\nFailed",
+   "default": "Pending",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "held",
+   "fieldtype": "Check",
+   "label": "Held"
+  },
+  {
+   "fieldname": "batch",
+   "fieldtype": "Link",
+   "label": "Batch",
+   "options": "DATEV Batch"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message"
+  }
+ ]
+}

@@ -1,0 +1,65 @@
+{
+ "docstatus": 0,
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "DATEV",
+ "custom": 0,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "name": "DATEV Event Log",
+ "autoname": "hash",
+ "in_create": 1,
+ "permissions": [
+  {
+   "role": "DATEV Manager",
+   "read": 1,
+   "create": 1
+  },
+  {
+   "role": "DATEV User",
+   "read": 1,
+   "create": 1
+  }
+ ],
+ "field_order": [
+  "reference_doctype",
+  "reference_name",
+  "event",
+  "message",
+  "response"
+ ],
+ "fields": [
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference DocType",
+   "options": "DocType",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "event",
+   "fieldtype": "Data",
+   "label": "Event",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message"
+  },
+  {
+   "fieldname": "response",
+   "fieldtype": "Code",
+   "label": "Response",
+   "options": "JSON"
+  }
+ ]
+}

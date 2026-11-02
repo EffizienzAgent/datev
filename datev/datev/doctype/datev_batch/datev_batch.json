@@ -1,0 +1,100 @@
+{
+ "docstatus": 0,
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "DATEV",
+ "custom": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "name": "DATEV Batch",
+ "autoname": "DATEV-BATCH-.YYYY.-.#####",
+ "naming_rule": "Expression (old style)",
+ "permissions": [
+  {
+   "role": "DATEV Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1
+  },
+  {
+   "role": "DATEV User",
+   "read": 1,
+   "write": 1,
+   "report": 1
+  }
+ ],
+ "field_order": [
+  "client",
+  "export_connector",
+  "status",
+  "approved_by",
+  "approved_on",
+  "sent_on",
+  "file",
+  "notified_on",
+  "message"
+ ],
+ "fields": [
+  {
+   "fieldname": "client",
+   "fieldtype": "Link",
+   "label": "Client",
+   "options": "DATEV Client",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "export_connector",
+   "fieldtype": "Data",
+   "label": "Export Connector"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Awaiting Approval\nApproved\nSending\nSent\nPartially Sent\nFailed",
+   "default": "Awaiting Approval",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File"
+  },
+  {
+   "fieldname": "notified_on",
+   "fieldtype": "Datetime",
+   "label": "Notified On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message"
+  }
+ ]
+}

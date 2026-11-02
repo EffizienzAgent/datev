@@ -1,0 +1,114 @@
+{
+ "docstatus": 0,
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "DATEV",
+ "custom": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "name": "DATEV Party Account",
+ "autoname": "hash",
+ "title_field": "party_name",
+ "permissions": [
+  {
+   "role": "DATEV Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1
+  },
+  {
+   "role": "DATEV User",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "field_order": [
+  "client",
+  "kind",
+  "party_type",
+  "party",
+  "party_name",
+  "vat_id",
+  "iban",
+  "preferred_number",
+  "account_number",
+  "sync_status",
+  "message"
+ ],
+ "fields": [
+  {
+   "fieldname": "client",
+   "fieldtype": "Link",
+   "label": "Client",
+   "options": "DATEV Client",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Kind",
+   "options": "Debtor\nCreditor",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Link",
+   "label": "Party Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "party_type"
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "label": "Party Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "vat_id",
+   "fieldtype": "Data",
+   "label": "VAT ID"
+  },
+  {
+   "fieldname": "iban",
+   "fieldtype": "Data",
+   "label": "IBAN"
+  },
+  {
+   "fieldname": "preferred_number",
+   "fieldtype": "Int",
+   "label": "Preferred Number"
+  },
+  {
+   "fieldname": "account_number",
+   "fieldtype": "Int",
+   "label": "Account Number",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sync_status",
+   "fieldtype": "Select",
+   "label": "Sync Status",
+   "options": "New\nCreated\nImported\nTo Clarify\nError",
+   "default": "New",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message"
+  }
+ ]
+}
