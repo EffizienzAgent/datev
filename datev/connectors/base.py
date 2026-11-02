@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
+import frappe
+
 
 class ConnectorError(Exception):
 	def __init__(self, message: str, *, retryable: bool = False, response: object = None):
@@ -71,3 +73,8 @@ class MasterDataConnector(Connector, ABC):
 
 	@abstractmethod
 	def create_party(self, party_account) -> None: ...
+
+
+def read_document_file(document) -> bytes:
+	content = frappe.get_doc("File", {"file_url": document.file}).get_content()
+	return content.encode() if isinstance(content, str) else content

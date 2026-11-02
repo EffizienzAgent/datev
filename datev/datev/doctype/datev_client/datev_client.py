@@ -4,6 +4,9 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from datev.clients.business_os import BusinessOS
+from datev.connectors.registry import get_storage
+
 BU_KEY_PATTERN = re.compile(r"^\d{0,4}$")
 DC = "DATEVconnect"
 
@@ -64,3 +67,32 @@ class DATEVClient(Document):
 			if value in seen:
 				frappe.throw(_("Row {0}: {1} {2} is listed more than once.").format(row.idx, label, value))
 			seen.add(value)
+
+	@frappe.whitelist()
+	def refresh_document_types(self) -> int:
+		frappe.only_for("DATEV Manager")
+		types = get_storage(self).document_types()
+		self.set("document_type_options", [])
+		for row in types:
+			self.append(
+				"document_type_options",
+				{"document_type": row["belegtyp"], "category": row.get("belegkreis")},
+			)
+		self.save()
+		return len(types)
+
+	@frappe.whitelist()
+	def business_os_connections(self) -> list[dict]:
+		frappe.only_for("DATEV Manager")
+		api = BusinessOS(self.get_password("bos_api_key"))
+		rows = [
+			{"id": c["id"], "bezeichnung": c.get("bezeichnung"), "status": c.get("status")}
+			for c in api.connections()
+		]
+		for company in api.companies():
+			if (company.get("consultant_number"), company.get("client_number")) == (
+				self.consultant_number,
+				self.client_number,
+			):
+				rows.append({"id": company["id"], "bezeichnung": company.get("name"), "status": None})
+		return rows
