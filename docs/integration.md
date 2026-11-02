@@ -89,48 +89,48 @@ CLIENT = "Mustermann Handels GmbH"
 
 
 def send_invoice(sinv) -> None:
-    pdf = frappe.get_print("Sales Invoice", sinv.name, as_pdf=True)
+	pdf = frappe.get_print("Sales Invoice", sinv.name, as_pdf=True)
 
-    debtor = intake.ensure_party_account(
-        CLIENT,
-        "Debtor",
-        party_type="Customer",
-        party=sinv.customer,
-        party_name=sinv.customer_name,
-        vat_id=sinv.tax_id,
-        preferred_number=int(sinv.customer_number),
-    )
-    document = intake.upsert_document(
-        CLIENT,
-        sinv.name,
-        direction="Outgoing",
-        file_name=f"{sinv.name}.pdf",
-        content=pdf,
-        document_date=sinv.posting_date,
-        document_number=sinv.name,
-        amount=sinv.grand_total,
-        currency=sinv.currency,
-        source_doctype="Sales Invoice",
-        source_name=sinv.name,
-        is_return=bool(sinv.is_return),
-    )
-    lines = [  # (revenue account, gross amount, tax rate)
-        (8400, flt(1190), 19),
-        (8300, flt(214), 7),
-    ]
-    for number, (account, gross, rate) in enumerate(lines, start=1):
-        intake.add_booking(
-            document,
-            str(number),
-            kind="Outgoing Invoice",
-            party_account=debtor,
-            contra_account=account,
-            amount=gross,
-            debit_credit="H" if sinv.is_return else "S",
-            tax_rate=rate,
-            tax_code=f"DE {rate}%",
-            posting_text=f"Rechnung {sinv.name}",
-        )
+	debtor = intake.ensure_party_account(
+		CLIENT,
+		"Debtor",
+		party_type="Customer",
+		party=sinv.customer,
+		party_name=sinv.customer_name,
+		vat_id=sinv.tax_id,
+		preferred_number=int(sinv.customer_number),
+	)
+	document = intake.upsert_document(
+		CLIENT,
+		sinv.name,
+		direction="Outgoing",
+		file_name=f"{sinv.name}.pdf",
+		content=pdf,
+		document_date=sinv.posting_date,
+		document_number=sinv.name,
+		amount=sinv.grand_total,
+		currency=sinv.currency,
+		source_doctype="Sales Invoice",
+		source_name=sinv.name,
+		is_return=bool(sinv.is_return),
+	)
+	lines = [  # (revenue account, gross amount, tax rate)
+		(8400, flt(1190), 19),
+		(8300, flt(214), 7),
+	]
+	for number, (account, gross, rate) in enumerate(lines, start=1):
+		intake.add_booking(
+			document,
+			str(number),
+			kind="Outgoing Invoice",
+			party_account=debtor,
+			contra_account=account,
+			amount=gross,
+			debit_credit="H" if sinv.is_return else "S",
+			tax_rate=rate,
+			tax_code=f"DE {rate}%",
+			posting_text=f"Rechnung {sinv.name}",
+		)
 ```
 
 All lines share the invoice number in Belegfeld 1 and the Beleglink of the one document.
@@ -138,16 +138,47 @@ All lines share the invoice number in Belegfeld 1 and the Beleglink of the one d
 **Cancellation invoice.** It is its own document and its own bookings. Deliver it exactly like the invoice with `is_return=True` and `debit_credit="H"` (the amounts stay positive), under its own source key:
 
 ```python
-debtor = intake.ensure_party_account(CLIENT, "Debtor", party_type="Customer", party="CUST-0001",
-                                     party_name="Hansen Elektrotechnik GmbH", preferred_number=10001)
-document = intake.upsert_document(
-    CLIENT, "SINV-0001-RET", direction="Outgoing", file_name="SINV-0001-RET.pdf", content=pdf,
-    document_date="2026-10-26", document_number="ST-2026-0007", amount=1404, is_return=True,
+debtor = intake.ensure_party_account(
+	CLIENT,
+	"Debtor",
+	party_type="Customer",
+	party="CUST-0001",
+	party_name="Hansen Elektrotechnik GmbH",
+	preferred_number=10001,
 )
-intake.add_booking(document, "1", kind="Outgoing Invoice", party_account=debtor, contra_account=8400,
-                   amount=1190, debit_credit="H", tax_rate=19, tax_code="DE 19%")
-intake.add_booking(document, "2", kind="Outgoing Invoice", party_account=debtor, contra_account=8300,
-                   amount=214, debit_credit="H", tax_rate=7, tax_code="DE 7%")
+document = intake.upsert_document(
+	CLIENT,
+	"SINV-0001-RET",
+	direction="Outgoing",
+	file_name="SINV-0001-RET.pdf",
+	content=pdf,
+	document_date="2026-10-26",
+	document_number="ST-2026-0007",
+	amount=1404,
+	is_return=True,
+)
+intake.add_booking(
+	document,
+	"1",
+	kind="Outgoing Invoice",
+	party_account=debtor,
+	contra_account=8400,
+	amount=1190,
+	debit_credit="H",
+	tax_rate=19,
+	tax_code="DE 19%",
+)
+intake.add_booking(
+	document,
+	"2",
+	kind="Outgoing Invoice",
+	party_account=debtor,
+	contra_account=8300,
+	amount=214,
+	debit_credit="H",
+	tax_rate=7,
+	tax_code="DE 7%",
+)
 ```
 
 Rules to know:
