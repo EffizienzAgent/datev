@@ -33,6 +33,7 @@
   "approved_by",
   "approved_on",
   "sent_on",
+  "failed_count",
   "file",
   "notified_on",
   "message"
@@ -79,6 +80,12 @@
    "fieldname": "sent_on",
    "fieldtype": "Datetime",
    "label": "Sent On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "failed_count",
+   "fieldtype": "Int",
+   "label": "Failed Bookings",
    "read_only": 1
   },
   {

@@ -90,16 +90,17 @@ def replace_file(document, file_name: str, content: bytes) -> None:
 
 def discard_document(source_key: str) -> None:
 	name = frappe.db.get_value(DOCUMENT, {"source_key": source_key}, "name")
-	frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
-	document = frappe.get_doc(DOCUMENT, name)
-	if document.status in ("Uploaded", "No Link"):
+	if not name:
+		frappe.throw(_("No document with source key {0}.").format(source_key), frappe.DoesNotExistError)
+	status = frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
+	if status in ("Uploaded", "No Link"):
 		frappe.throw(_("The document is already in DATEV. Create a cancellation invoice instead."))
-	if document.status == "Discarded":
+	if status == "Discarded":
 		return
-	document.db_set("status", "Discarded")
-	log_event(DOCUMENT, document.name, "discarded")
+	frappe.db.set_value(DOCUMENT, name, "status", "Discarded")
+	log_event(DOCUMENT, name, "discarded")
 	for booking in frappe.get_all(
-		BOOKING, filters={"document": document.name, "status": ("in", OPEN_BOOKING_STATUSES)}, pluck="name"
+		BOOKING, filters={"document": name, "status": ("in", OPEN_BOOKING_STATUSES)}, pluck="name"
 	):
 		frappe.delete_doc("DATEV Booking", booking, ignore_permissions=True)
 
@@ -130,6 +131,8 @@ def add_booking(
 		return existing.name
 
 	source = frappe.get_doc(DOCUMENT, document)
+	if source.status == "Discarded":
+		frappe.throw(_("Document {0} is discarded and takes no bookings.").format(document))
 	if not bu_key and tax_code:
 		bu_key = frappe.db.get_value(
 			"DATEV Tax Key Rule",

@@ -230,6 +230,26 @@ class TestDocuments(IntegrationTestCase):
 		documents.upload(name)
 		self.assertEqual(FakeStorage.calls, 0)
 
+	def test_discard_unknown_source_key(self):
+		with self.assertRaises(frappe.DoesNotExistError):
+			intake.discard_document("SINV-DOES-NOT-EXIST")
+
+	def test_discarded_document_takes_no_bookings(self):
+		name, _enqueue = upsert(self.client_doc, "SINV-DISCARD")
+		intake.discard_document("SINV-DISCARD")
+		intake.discard_document("SINV-DISCARD")
+		party = make_party_account(self.client_doc)
+		with self.assertRaises(frappe.ValidationError):
+			intake.add_booking(
+				name,
+				"1",
+				kind="Outgoing Invoice",
+				party_account=party.name,
+				contra_account=4400,
+				amount=119,
+				debit_credit="S",
+			)
+
 	def test_discard_after_upload_rejected(self):
 		name, _enqueue = upsert(self.client_doc, "SINV-UPLOADED")
 		documents.upload(name)

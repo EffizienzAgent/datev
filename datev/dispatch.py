@@ -261,13 +261,13 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 	failed = len(bookings) - len(sent) - len(uncertain)
 	message = _("{0} sent, {1} failed.").format(len(sent), failed)
 	if uncertain:
-		status, event = "Sending", "delivery_uncertain"
+		event = "delivery_uncertain"
 		message = _("Delivery to DATEV is uncertain. Check DATEV, then resolve the batch.")
-		values = {"message": message}
+		values = {"message": message, "failed_count": failed}
 	else:
 		status = "Sent" if not failed else "Partially Sent" if sent else "Failed"
 		event = frappe.scrub(status)
-		values = {"status": status, "message": message, "sent_on": now_datetime()}
+		values = {"status": status, "message": message, "sent_on": now_datetime(), "failed_count": failed}
 	frappe.db.set_value(BATCH, batch, values)
 	frappe.db.commit()
 
@@ -299,7 +299,7 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 		for booking in bookings:
 			booking.db_set({"status": final_status, "message": ""})
 		mark_parties_created(bookings, final_status)
-		status, event = "Sent", "resolved_delivered"
+		status, event = ("Partially Sent" if batch_doc.failed_count else "Sent"), "resolved_delivered"
 	else:
 		for booking in bookings:
 			booking.db_set({"status": "Pending", "batch": None, "message": ""})

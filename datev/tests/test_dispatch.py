@@ -460,6 +460,20 @@ class TestDispatch(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			dispatch.resolve_batch(batch, delivered=False)
 
+	def test_resolve_delivered_keeps_failures_visible(self):
+		failed = self.booking()
+		unsure = self.booking()
+		FakeExport.rejected = {failed}
+		FakeExport.uncertain = {unsure}
+		batch = dispatch.collect(self.client_doc.name)
+		dispatch.send(batch)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", batch, ["status", "failed_count"]), ("Sending", 1)
+		)
+		dispatch.resolve_batch(batch, delivered=True)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Partially Sent")
+		self.assertEqual((self.status(failed), self.status(unsure)), ("Failed", "Exported"))
+
 	def test_resolve_batch_not_delivered(self):
 		batch, booking = self.uncertain_batch()
 		dispatch.resolve_batch(batch, delivered=False)
@@ -639,7 +653,7 @@ class TestDATEVconnectUncertainGroup(IntegrationTestCase):
 		self.assertEqual(
 			self.states(), [("Transferred", self.batch), ("Transferred", self.batch), ("Failed", None)]
 		)
-		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Sent")
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Partially Sent")
 
 
 def only_own_client(client):
