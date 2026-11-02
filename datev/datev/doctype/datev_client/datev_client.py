@@ -122,4 +122,17 @@ class DATEVClient(Document):
 		file = frappe.get_doc("File", {"file_url": file_url})
 		with open(file.get_full_path(), "rb") as f:
 			content = f.read()
-		return import_existing(self.name, master_data.parse(content))
+		header, parties = master_data.parse(content)
+		self.check_file_header(header)
+		return import_existing(self.name, parties)
+
+	def check_file_header(self, header: dict) -> None:
+		expected = (self.consultant_number, self.client_number, self.account_length or 4)
+		found = (header["consultant_number"], header["client_number"], header["account_length"])
+		if found != expected:
+			frappe.throw(
+				_(
+					"The file is for consultant {0}, client {1}, account length {2}, "
+					"but this DATEV Client is consultant {3}, client {4}, account length {5}."
+				).format(*found, *expected)
+			)

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:33+0000\n"
+"POT-Creation-Date: 2026-11-02 18:35+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -17,6 +17,10 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#: datev/parties.py:181
+msgid "A party account can only be resolved as imported or created."
+msgstr "Ein Personenkonto kann nur als importiert oder angelegt geklärt werden."
 
 #: datev/dispatch.py:379
 msgid "A reason is required to reset a booking."
@@ -41,6 +45,10 @@ msgstr "Kontenzuordnungen"
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:96
 msgid "Account Number"
 msgstr "Kontonummer"
+
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:34
+msgid "Account already exists in DATEV"
+msgstr "Konto existiert bereits in DATEV"
 
 #: datev/datev/doctype/datev_client/datev_client.py:28
 msgid "Account length must be between 4 and 8."
@@ -394,16 +402,16 @@ msgstr "DATEV Steuerschlüssel-Regel"
 msgid "DATEV User"
 msgstr "DATEV Benutzer"
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:21
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:24
 msgid "DATEV account number"
 msgstr "DATEV-Kontonummer"
 
-#: datev/parties.py:153
+#: datev/parties.py:164
 #, python-brace-format
-msgid "DATEV account {0} already exists as {1}. Check the account and resolve it manually."
-msgstr "Das DATEV-Konto {0} existiert bereits als {1}. Prüfen Sie das Konto und klären Sie es manuell."
+msgid "DATEV account {0} exists as {1}, but the party is {2}. Check the account and resolve it manually."
+msgstr "DATEV-Konto {0} existiert als {1}, der Geschäftspartner ist aber {2}. Prüfen Sie das Konto und klären Sie es manuell."
 
-#: datev/parties.py:210
+#: datev/parties.py:242
 #, python-brace-format
 msgid "DATEV account {0} is also claimed by {1}."
 msgstr "Das DATEV-Konto {0} wird auch von {1} beansprucht."
@@ -831,14 +839,19 @@ msgstr "Zuordnungen"
 msgid "Mark all bookings of this batch as delivered to DATEV?"
 msgstr "Alle Buchungen dieses Buchungsstapels als an DATEV übergeben markieren?"
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:16
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:29
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:18
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:49
 msgid "Mark resolved"
 msgstr "Als geklärt markieren"
 
 #: datev/datev/doctype/datev_batch/datev_batch.js:30
 msgid "Mark this batch as not delivered? Its bookings will be sent again."
 msgstr "Diesen Buchungsstapel als nicht übergeben markieren? Seine Buchungen werden erneut gesendet."
+
+#: datev/parties.py:187
+#, python-brace-format
+msgid "Marked resolved as {0} with DATEV account {1}."
+msgstr "Als geklärt markiert ({0}) mit DATEV-Konto {1}."
 
 #. Label of the master_data_connector (Select) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:172
@@ -907,6 +920,10 @@ msgstr "Monatlich"
 msgid "New"
 msgstr "Neu"
 
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:35
+msgid "New account confirmed in DATEV"
+msgstr "Neues Konto in DATEV bestätigt"
+
 #. Label of the next_attempt (Datetime) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:165
 msgid "Next Attempt"
@@ -966,7 +983,11 @@ msgstr "Die Nummernvergabe durch DATEV erfordert den Stammdaten-Konnektor DATEVc
 msgid "Only batches that are still sending can be resolved."
 msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 
-#: datev/parties.py:137
+#: datev/parties.py:184
+msgid "Only party accounts to clarify can be marked resolved."
+msgstr "Nur zu klärende Personenkonten können als geklärt markiert werden."
+
+#: datev/parties.py:143
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr "Nur fehlerhafte oder zu klärende Personenkonten können erneut versucht werden."
 
@@ -1139,6 +1160,10 @@ msgstr "Zurückgesetzt von {0}: {1}"
 msgid "Reset to Pending"
 msgstr "Auf Ausstehend zurücksetzen"
 
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:31
+msgid "Resolution"
+msgstr "Klärung"
+
 #: datev/datev/doctype/datev_batch/datev_batch.js:17
 #: datev/datev/doctype/datev_batch/datev_batch.js:22
 msgid "Resolve"
@@ -1193,7 +1218,7 @@ msgstr "SKR04"
 msgid "Saturday"
 msgstr "Samstag"
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:30
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:50
 msgid "Save"
 msgstr "Speichern"
 
@@ -1229,7 +1254,7 @@ msgstr "Gesendet"
 msgid "Sent On"
 msgstr "Gesendet am"
 
-#: datev/parties.py:194
+#: datev/parties.py:226
 #, python-brace-format
 msgid "Several DATEV accounts match: {0}"
 msgstr "Mehrere DATEV-Konten passen: {0}"
@@ -1354,6 +1379,11 @@ msgstr "Der Export-Konnektor hat kein Ergebnis zurückgegeben."
 #: datev/api.py:41
 msgid "The file content is not valid base64."
 msgstr "Der Dateiinhalt ist kein gültiges Base64."
+
+#: datev/datev/doctype/datev_client/datev_client.py:135
+#, python-brace-format
+msgid "The file is for consultant {0}, client {1}, account length {2}, but this DATEV Client is consultant {3}, client {4}, account length {5}."
+msgstr "Die Datei gehört zu Beraternummer {0}, Mandantennummer {1}, Sachkontenlänge {2}, dieser DATEV-Mandant hat aber Beraternummer {3}, Mandantennummer {4}, Sachkontenlänge {5}."
 
 #: datev/intake.py:34
 #, python-brace-format

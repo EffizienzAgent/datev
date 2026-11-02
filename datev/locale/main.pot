@@ -7,14 +7,18 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:33+0000\n"
-"PO-Revision-Date: 2026-11-02 18:33+0000\n"
+"POT-Creation-Date: 2026-11-02 18:35+0000\n"
+"PO-Revision-Date: 2026-11-02 18:35+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#: datev/parties.py:181
+msgid "A party account can only be resolved as imported or created."
+msgstr ""
 
 #: datev/dispatch.py:379
 msgid "A reason is required to reset a booking."
@@ -38,6 +42,10 @@ msgstr ""
 #. Label of the account_number (Int) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:96
 msgid "Account Number"
+msgstr ""
+
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:34
+msgid "Account already exists in DATEV"
 msgstr ""
 
 #: datev/datev/doctype/datev_client/datev_client.py:28
@@ -392,16 +400,16 @@ msgstr ""
 msgid "DATEV User"
 msgstr ""
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:21
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:24
 msgid "DATEV account number"
 msgstr ""
 
-#: datev/parties.py:153
+#: datev/parties.py:164
 #, python-brace-format
-msgid "DATEV account {0} already exists as {1}. Check the account and resolve it manually."
+msgid "DATEV account {0} exists as {1}, but the party is {2}. Check the account and resolve it manually."
 msgstr ""
 
-#: datev/parties.py:210
+#: datev/parties.py:242
 #, python-brace-format
 msgid "DATEV account {0} is also claimed by {1}."
 msgstr ""
@@ -831,13 +839,18 @@ msgstr ""
 msgid "Mark all bookings of this batch as delivered to DATEV?"
 msgstr ""
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:16
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:29
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:18
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:49
 msgid "Mark resolved"
 msgstr ""
 
 #: datev/datev/doctype/datev_batch/datev_batch.js:30
 msgid "Mark this batch as not delivered? Its bookings will be sent again."
+msgstr ""
+
+#: datev/parties.py:187
+#, python-brace-format
+msgid "Marked resolved as {0} with DATEV account {1}."
 msgstr ""
 
 #. Label of the master_data_connector (Select) field in DocType 'DATEV Client'
@@ -907,6 +920,10 @@ msgstr ""
 msgid "New"
 msgstr ""
 
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:35
+msgid "New account confirmed in DATEV"
+msgstr ""
+
 #. Label of the next_attempt (Datetime) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:165
 msgid "Next Attempt"
@@ -966,7 +983,11 @@ msgstr ""
 msgid "Only batches that are still sending can be resolved."
 msgstr ""
 
-#: datev/parties.py:137
+#: datev/parties.py:184
+msgid "Only party accounts to clarify can be marked resolved."
+msgstr ""
+
+#: datev/parties.py:143
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr ""
 
@@ -1139,6 +1160,10 @@ msgstr ""
 msgid "Reset to Pending"
 msgstr ""
 
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:31
+msgid "Resolution"
+msgstr ""
+
 #: datev/datev/doctype/datev_batch/datev_batch.js:17
 #: datev/datev/doctype/datev_batch/datev_batch.js:22
 msgid "Resolve"
@@ -1193,7 +1218,7 @@ msgstr ""
 msgid "Saturday"
 msgstr ""
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:30
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:50
 msgid "Save"
 msgstr ""
 
@@ -1229,7 +1254,7 @@ msgstr ""
 msgid "Sent On"
 msgstr ""
 
-#: datev/parties.py:194
+#: datev/parties.py:226
 #, python-brace-format
 msgid "Several DATEV accounts match: {0}"
 msgstr ""
@@ -1353,6 +1378,11 @@ msgstr ""
 
 #: datev/api.py:41
 msgid "The file content is not valid base64."
+msgstr ""
+
+#: datev/datev/doctype/datev_client/datev_client.py:135
+#, python-brace-format
+msgid "The file is for consultant {0}, client {1}, account length {2}, but this DATEV Client is consultant {3}, client {4}, account length {5}."
 msgstr ""
 
 #: datev/intake.py:34

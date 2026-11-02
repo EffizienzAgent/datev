@@ -12,6 +12,7 @@ from datev.parties import (
 	clear_remote_cache,
 	ensure_in_datev,
 	import_existing,
+	mark_resolved,
 	normalize_name,
 	retry_party,
 )
@@ -130,12 +131,12 @@ class TestPartyAccounts(IntegrationTestCase):
 		self.assertEqual((other.sync_status, other.account_number), ("To Clarify", 0))
 		self.assertIn("Fremd AG", other.message)
 
-	def master_data_file(self, rows):
+	def master_data_file(self, rows, **client_values):
 		exported = [
 			frappe._dict(account_number=number, party_name=name, vat_id=None, iban=None)
 			for number, name in rows
 		]
-		content = master_data.build(make_client(), exported, datetime(2027, 1, 31, 10, 30))
+		content = master_data.build(make_client(**client_values), exported, datetime(2027, 1, 31, 10, 30))
 		return (
 			frappe.get_doc({"doctype": "File", "file_name": "stamm.csv", "content": content, "is_private": 1})
 			.insert()
@@ -244,11 +245,80 @@ class TestPartyAccounts(IntegrationTestCase):
 			self.assertIn(competitor.name, account.message)
 
 	def test_import_by_number(self):
-		account = make_party_account(self.client, preferred_number=10070, party_name="Lokal")
-		result = import_existing(self.client.name, [RemoteParty("Debtor", 10070, "Entfernt")])
+		account = make_party_account(self.client, preferred_number=10070, party_name="Lokal GmbH")
+		result = import_existing(self.client.name, [RemoteParty("Debtor", 10070, "LOKAL")])
 		self.assertEqual(result, {"imported": 1, "to_clarify": 0, "unmatched": 0})
 		account.reload()
 		self.assertEqual((account.account_number, account.sync_status), (10070, "Imported"))
+
+	def test_number_match_name_mismatch_to_clarify(self):
+		account = make_party_account(self.client, preferred_number=10070, party_name="Lokal GmbH")
+		remote = [RemoteParty("Debtor", 10070, "Entfernt AG")]
+		result = import_existing(self.client.name, remote)
+		self.assertEqual(result, {"imported": 0, "to_clarify": 1, "unmatched": 0})
+		account.reload()
+		self.assertEqual(account.sync_status, "To Clarify")
+		self.assertFalse(account.account_number)
+		self.assertIn("Entfernt AG", account.message)
+		self.assertIn("Lokal GmbH", account.message)
+
+		with use_connector(fake_connector(remote=remote)):
+			self.assertEqual(retry_party(account.name), "To Clarify")
+		account.reload()
+		self.assertIn("Entfernt AG", account.message)
+		self.assertIn("Lokal GmbH", account.message)
+
+	def test_number_match_vat_agrees_links(self):
+		account = make_party_account(
+			self.client, preferred_number=10070, party_name="Lokal GmbH", vat_id="DE 123456789"
+		)
+		remote = [RemoteParty("Debtor", 10070, "Ganz Anders AG", vat_id="DE123456789")]
+		result = import_existing(self.client.name, remote)
+		self.assertEqual(result, {"imported": 1, "to_clarify": 0, "unmatched": 0})
+		account.reload()
+		self.assertEqual((account.account_number, account.sync_status), (10070, "Imported"))
+
+	def test_file_from_other_client_rejected(self):
+		for values in ({"client_number": 55004}, {"consultant_number": 29099}, {"account_length": 5}):
+			with self.subTest(values=values):
+				file_url = self.master_data_file([(100700, "Fremd AG")], **values)
+				with self.assertRaises(frappe.ValidationError) as raised:
+					self.client.import_parties_from_file(file_url)
+				(key,) = values
+				self.assertIn(str(values[key]), str(raised.exception))
+		self.assertFalse(frappe.db.get_value("DATEV Client", self.client.name, "last_party_import_on"))
+
+	def test_mark_resolved_logs(self):
+		account = make_party_account(self.client, party_name="Offen", sync_status="To Clarify")
+		mark_resolved(account.name, 10160, "Imported")
+		account.reload()
+		self.assertEqual(
+			(account.account_number, account.sync_status, account.message), (10160, "Imported", "")
+		)
+		log = frappe.get_all(
+			"DATEV Event Log", filters={"reference_name": account.name, "event": "resolved"}, pluck="message"
+		)
+		self.assertEqual(len(log), 1)
+		self.assertIn("10160", log[0])
+
+		created = make_party_account(self.client, party_name="Neu", sync_status="To Clarify")
+		mark_resolved(created.name, 10161, "Created")
+		self.assertEqual(frappe.db.get_value("DATEV Party Account", created.name, "sync_status"), "Created")
+		with self.assertRaises(frappe.ValidationError):
+			mark_resolved(created.name, 10162, "Imported")
+		other = make_party_account(self.client, party_name="Andere", sync_status="To Clarify")
+		with self.assertRaises(frappe.ValidationError):
+			mark_resolved(other.name, 10163, "New")
+
+	def test_mark_resolved_manager_only(self):
+		account = make_party_account(self.client, sync_status="To Clarify")
+		with patch("frappe.only_for", side_effect=frappe.PermissionError) as only_for:
+			with self.assertRaises(frappe.PermissionError):
+				mark_resolved(account.name, 10170, "Imported")
+		only_for.assert_called_once_with("DATEV Manager")
+		self.assertEqual(
+			frappe.db.get_value("DATEV Party Account", account.name, "sync_status"), "To Clarify"
+		)
 
 	def test_import_by_vat_id_when_number_matching_off(self):
 		self.client.db_set("match_debtors_by_number", 0)
@@ -318,7 +388,7 @@ class TestPartyAccounts(IntegrationTestCase):
 		self.assertEqual((creditor.account_number, creditor.sync_status), (70020, "Imported"))
 
 	def test_import_parties_uses_connector(self):
-		account = make_party_account(self.client, preferred_number=10130)
+		account = make_party_account(self.client, preferred_number=10130, party_name="Fern GmbH")
 		connector = fake_connector(remote=[RemoteParty("Debtor", 10130, "Fern")])
 		with use_connector(connector):
 			result = self.client.import_parties()

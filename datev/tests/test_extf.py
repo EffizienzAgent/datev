@@ -158,7 +158,10 @@ class TestMasterData(IntegrationTestCase):
 			("Creditor", 70000, "Lieferant AG", None, None),
 		]
 		for raw in (content, b'"DTVF"' + content[len(b'"EXTF"') :]):
-			parties = master_data.parse(raw)
+			header, parties = master_data.parse(raw)
+			self.assertEqual(
+				header, {"consultant_number": 29098, "client_number": 55003, "account_length": 4}
+			)
 			self.assertEqual(
 				[(p.kind, p.account_number, p.name, p.vat_id, p.iban) for p in parties], expected
 			)
