@@ -7,6 +7,8 @@ from datev.events import log_event
 
 DOCUMENT = "DATEV Document"
 PARTY_ACCOUNT = "DATEV Party Account"
+BOOKING = "DATEV Booking"
+OPEN_BOOKING_STATUSES = ("Pending", "Stuck", "Failed")
 
 
 def upsert_document(
@@ -94,6 +96,62 @@ def discard_document(source_key: str) -> None:
 		"DATEV Booking", filters={"document": document.name, "status": "Pending"}, pluck="name"
 	):
 		frappe.delete_doc("DATEV Booking", booking, ignore_permissions=True)
+
+
+def add_booking(
+	document: str,
+	line_key: str,
+	*,
+	kind: str,
+	party_account: str,
+	contra_account: int,
+	amount,
+	debit_credit: str,
+	tax_rate: float = 0,
+	bu_key: str = "",
+	posting_text: str = "",
+	due_date=None,
+	tax_code: str | None = None,
+) -> str:
+	existing = frappe.db.get_value(
+		BOOKING,
+		{"document": document, "line_key": line_key},
+		["name", "status"],
+		as_dict=True,
+		for_update=True,
+	)
+	if existing and existing.status not in OPEN_BOOKING_STATUSES:
+		return existing.name
+
+	source = frappe.get_doc(DOCUMENT, document)
+	if not bu_key and tax_code:
+		bu_key = frappe.db.get_value(
+			"DATEV Tax Key Rule",
+			{"parent": source.client, "parenttype": "DATEV Client", "tax_code": tax_code},
+			"bu_key",
+		)
+	booking = frappe.get_doc(BOOKING, existing.name) if existing else frappe.new_doc(BOOKING)
+	booking.update(
+		{
+			"client": source.client,
+			"document": document,
+			"line_key": line_key,
+			"kind": kind,
+			"party_account": party_account,
+			"contra_account": contra_account,
+			"amount": amount,
+			"debit_credit": debit_credit,
+			"tax_rate": tax_rate,
+			"bu_key": bu_key or "",
+			"posting_text": posting_text,
+			"due_date": due_date,
+			"currency": source.currency,
+			"document_date": source.document_date,
+			"document_field_1": source.document_number,
+		}
+	)
+	booking.save(ignore_permissions=True)
+	return booking.name
 
 
 def ensure_party_account(

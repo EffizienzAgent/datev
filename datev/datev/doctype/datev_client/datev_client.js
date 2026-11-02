@@ -21,6 +21,18 @@ frappe.ui.form.on("DATEV Client", {
 			});
 		}
 		frm.add_custom_button(__("Match from file"), () => frm.trigger("match_from_file"));
+		frm.add_custom_button(__("Send bookings now"), () => frm.trigger("send_now"));
+	},
+
+	send_now(frm) {
+		frappe.call("datev.dispatch.send_now", { client: frm.doc.name }).then((r) => {
+			frappe.show_alert({
+				message: r.message
+					? __("Batch {0} created.", [r.message])
+					: __("No bookings are ready to send."),
+				indicator: r.message ? "green" : "orange",
+			});
+		});
 	},
 
 	match_from_file(frm) {

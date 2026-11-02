@@ -1,0 +1,357 @@
+from datetime import datetime
+from typing import ClassVar
+from unittest.mock import patch
+
+import frappe
+from frappe.tests import IntegrationTestCase
+
+from datev import dispatch, intake
+from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
+from datev.tests.factories import make_client, make_document, make_party_account
+
+
+class FakeExport(ExportConnector):
+	final_status = "Exported"
+	calls: ClassVar[list] = []
+	rejected: ClassVar[set] = set()
+	error: ClassVar[Exception | None] = None
+
+	def export(self, batch, bookings):
+		FakeExport.calls.append([booking.name for booking in bookings])
+		if FakeExport.error:
+			raise FakeExport.error
+		return ExportResult(
+			items=[
+				ExportItemResult(booking.name, booking.name not in FakeExport.rejected, "rejected")
+				for booking in bookings
+			],
+			response={"accepted": len(bookings)},
+		)
+
+
+real_get_hooks = frappe.get_hooks
+
+
+def fake_hooks(name=None, *args, **kwargs):
+	if name == "datev_export_connectors":
+		return [{"EXTF download": "datev.tests.test_dispatch.FakeExport"}]
+	return real_get_hooks(name, *args, **kwargs)
+
+
+class TestDispatch(IntegrationTestCase):
+	def setUp(self):
+		FakeExport.calls = []
+		FakeExport.rejected = set()
+		FakeExport.error = None
+		for target in ("frappe.get_hooks", "frappe.db.commit"):
+			patcher = patch(target, fake_hooks) if target == "frappe.get_hooks" else patch(target)
+			patcher.start()
+			self.addCleanup(patcher.stop)
+		self.client_doc = make_client(approval_required=0, dispatch_frequency="Daily")
+		self.party = make_party_account(self.client_doc, preferred_number=10001)
+
+	def document(self, client=None, **overrides):
+		values = {"status": "Uploaded", "external_id": "ID-1", "program_code": "BEDI"}
+		values.update(overrides)
+		return make_document(client or self.client_doc, **values)
+
+	def booking(self, document=None, line_key="1", **overrides):
+		document = document or self.document()
+		values = {
+			"kind": "Outgoing Invoice",
+			"party_account": self.party.name,
+			"contra_account": 4400,
+			"amount": 119,
+			"debit_credit": "S",
+		}
+		values.update(overrides)
+		return intake.add_booking(document.name, line_key, **values)
+
+	def status(self, booking):
+		return frappe.db.get_value("DATEV Booking", booking, "status")
+
+	def test_add_booking_idempotent(self):
+		document = self.document(document_number="RE-7")
+		name = self.booking(document, amount=100)
+		again = self.booking(document, amount=119, posting_text="Rent")
+		self.assertEqual(again, name)
+		booking = frappe.get_doc("DATEV Booking", name)
+		self.assertEqual(
+			(booking.amount, booking.posting_text, booking.client, booking.currency),
+			(119, "Rent", self.client_doc.name, "EUR"),
+		)
+		self.assertEqual((str(booking.document_date), booking.document_field_1), ("2027-01-05", "RE-7"))
+		self.assertEqual(frappe.db.count("DATEV Booking", {"document": document.name}), 1)
+
+		booking.db_set("status", "Exported")
+		self.assertEqual(self.booking(document, amount=50), name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", name, "amount"), 119)
+
+	def test_tax_code_maps_bu_key(self):
+		client = make_client(tax_keys=[{"tax_code": "DE19", "bu_key": "3"}])
+		party = make_party_account(client, preferred_number=10001)
+		document = self.document(client)
+
+		def add(line_key, **values):
+			name = intake.add_booking(
+				document.name,
+				line_key,
+				kind="Outgoing Invoice",
+				party_account=party.name,
+				contra_account=4400,
+				amount=119,
+				debit_credit="S",
+				**values,
+			)
+			return frappe.db.get_value("DATEV Booking", name, "bu_key") or ""
+
+		self.assertEqual(add("1", tax_code="DE19"), "3")
+		self.assertEqual(add("2", tax_code="UNKNOWN"), "")
+		self.assertEqual(add("3", tax_code="DE19", bu_key="9"), "9")
+		self.assertEqual(add("4"), "")
+
+	def test_preflight_requires_link_when_strict(self):
+		client = make_client(require_document_link=1)
+		party = make_party_account(client, preferred_number=10001)
+
+		def check(**document_values):
+			document = self.document(client, **document_values)
+			name = intake.add_booking(
+				document.name,
+				"1",
+				kind="Outgoing Invoice",
+				party_account=party.name,
+				contra_account=4400,
+				amount=119,
+				debit_credit="S",
+			)
+			return dispatch.preflight(frappe.get_doc("DATEV Booking", name))
+
+		self.assertTrue(check(status="No Link", external_id=None))
+		self.assertTrue(check(status="Uploaded", external_id=None))
+		self.assertTrue(check(status="Pending", external_id=None))
+		self.assertIsNone(check())
+
+	def test_preflight_allows_no_link_when_lenient(self):
+		client = make_client(require_document_link=0)
+		party = make_party_account(client, preferred_number=10001)
+		blocked = make_party_account(client, sync_status="To Clarify")
+
+		def check(party_account=party, document_number="RE-1", **document_values):
+			document = self.document(client, document_number=document_number, **document_values)
+			name = intake.add_booking(
+				document.name,
+				"1",
+				kind="Outgoing Invoice",
+				party_account=party_account.name,
+				contra_account=4400,
+				amount=119,
+				debit_credit="S",
+			)
+			return dispatch.preflight(frappe.get_doc("DATEV Booking", name))
+
+		self.assertIsNone(check(status="No Link", external_id=None))
+		self.assertTrue(check(status="Stuck"))
+		self.assertTrue(check(status="Pending"))
+		self.assertTrue(check(party_account=blocked))
+		self.assertTrue(check(document_number=""))
+
+	def test_collect_creates_batch_awaiting_approval(self):
+		self.client_doc.db_set("approval_required", 1)
+		ready = self.booking()
+		waiting = self.booking(self.document(status="Pending", external_id=None))
+
+		batch = dispatch.collect(self.client_doc.name)
+
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Awaiting Approval")
+		self.assertEqual(frappe.db.get_value("DATEV Booking", ready, ["status", "batch"]), ("Batched", batch))
+		stuck = frappe.db.get_value("DATEV Booking", waiting, ["status", "batch", "message"], as_dict=True)
+		self.assertEqual((stuck.status, stuck.batch), ("Stuck", None))
+		self.assertTrue(stuck.message)
+		self.assertTrue(frappe.db.get_value("DATEV Client", self.client_doc.name, "last_dispatch_on"))
+
+		dispatch.send(batch)
+		self.assertEqual(FakeExport.calls, [])
+
+		dispatch.approve(batch)
+		approved = frappe.get_doc("DATEV Batch", batch)
+		self.assertEqual((approved.status, approved.approved_by), ("Sent", frappe.session.user))
+		self.assertTrue(approved.approved_on)
+		self.assertEqual(FakeExport.calls, [[ready]])
+
+	def test_collect_without_approval_sends_on_run(self):
+		booking = self.booking()
+		with (
+			patch("frappe.get_all", side_effect=only_own_client(self.client_doc.name)),
+			patch("frappe.db.rollback"),
+		):
+			dispatch.run()
+
+		batch = frappe.db.get_value("DATEV Booking", booking, "batch")
+		self.assertEqual(self.status(booking), "Exported")
+		batch_doc = frappe.get_doc("DATEV Batch", batch)
+		self.assertEqual(batch_doc.status, "Sent")
+		self.assertTrue(batch_doc.sent_on)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Party Account", self.party.name, "sync_status"), "Created"
+		)
+		self.assertTrue(frappe.db.exists("DATEV Event Log", {"reference_name": batch, "event": "sent"}))
+
+		with patch("frappe.get_all", side_effect=only_own_client(self.client_doc.name)):
+			dispatch.run()
+		self.assertEqual(len(FakeExport.calls), 1)
+
+	def test_is_due_weekly_and_monthly(self):
+		client = frappe.get_doc(
+			{"doctype": "DATEV Client", "dispatch_frequency": "Weekly", "dispatch_weekday": "Monday"}
+		)
+		monday = datetime(2027, 1, 4, 9)
+		self.assertTrue(dispatch.is_due(client, monday))
+		self.assertFalse(dispatch.is_due(client, datetime(2027, 1, 5, 9)))
+		client.last_dispatch_on = datetime(2027, 1, 4, 1)
+		self.assertFalse(dispatch.is_due(client, monday))
+		client.last_dispatch_on = datetime(2026, 12, 28, 1)
+		self.assertTrue(dispatch.is_due(client, monday))
+
+		client.update({"dispatch_frequency": "Monthly", "dispatch_day_of_month": 10})
+		client.last_dispatch_on = datetime(2026, 12, 10, 1)
+		self.assertFalse(dispatch.is_due(client, datetime(2027, 1, 9, 9)))
+		self.assertTrue(dispatch.is_due(client, datetime(2027, 1, 12, 9)))
+		client.last_dispatch_on = datetime(2027, 1, 10, 1)
+		self.assertFalse(dispatch.is_due(client, datetime(2027, 1, 28, 9)))
+
+		client.update({"dispatch_frequency": "Daily", "last_dispatch_on": datetime(2027, 1, 4, 1)})
+		self.assertFalse(dispatch.is_due(client, datetime(2027, 1, 4, 23)))
+		self.assertTrue(dispatch.is_due(client, datetime(2027, 1, 5, 0)))
+
+	def test_hold_moves_booking_out_of_batch(self):
+		self.client_doc.db_set("approval_required", 1)
+		held = self.booking()
+		kept = self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+
+		dispatch.hold(held)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", held, ["status", "held", "batch"]), ("Pending", 1, None)
+		)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", kept, "batch"), batch)
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+
+		dispatch.hold(held, held=False)
+		second = dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", held, "batch"), second)
+
+		dispatch.approve(batch)
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.hold(kept)
+		self.assertEqual(self.status(kept), "Exported")
+
+	def test_hold_removes_empty_batch(self):
+		self.client_doc.db_set("approval_required", 1)
+		booking = self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		dispatch.hold(booking)
+		self.assertFalse(frappe.db.exists("DATEV Batch", batch))
+
+	def test_send_twice_sends_once(self):
+		self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		dispatch.send(batch)
+		dispatch.send(batch)
+		self.assertEqual(len(FakeExport.calls), 1)
+
+	def test_send_skips_batch_left_sending(self):
+		self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		frappe.db.set_value("DATEV Batch", batch, "status", "Sending")
+		dispatch.send(batch)
+		self.assertEqual(FakeExport.calls, [])
+
+	def test_partial_failure_resends_only_failed(self):
+		rejected = self.booking()
+		accepted = self.booking()
+		FakeExport.rejected = {rejected}
+		first = dispatch.collect(self.client_doc.name)
+		dispatch.send(first)
+
+		self.assertEqual(frappe.db.get_value("DATEV Batch", first, "status"), "Partially Sent")
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", rejected, ["status", "batch", "message"]),
+			("Failed", None, "rejected"),
+		)
+		self.assertEqual(self.status(accepted), "Exported")
+
+		FakeExport.rejected = set()
+		second = dispatch.collect(self.client_doc.name)
+		dispatch.send(second)
+		self.assertEqual(FakeExport.calls[1], [rejected])
+		self.assertEqual(self.status(rejected), "Exported")
+		self.assertEqual(frappe.db.get_value("DATEV Batch", second, "status"), "Sent")
+
+	def test_all_rejected_fails_batch(self):
+		booking = self.booking()
+		FakeExport.rejected = {booking}
+		batch = dispatch.collect(self.client_doc.name)
+		dispatch.send(batch)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Failed")
+		self.assertEqual(frappe.db.get_value("DATEV Party Account", self.party.name, "sync_status"), "New")
+
+	def test_exported_bookings_never_recollected(self):
+		document = self.document()
+		booking = self.booking(document)
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.status(booking), "Exported")
+
+		self.assertEqual(self.booking(document, amount=200), booking)
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+		self.assertEqual(len(FakeExport.calls), 1)
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.hold(booking)
+
+	def test_connector_exception_resets_bookings(self):
+		booking = self.booking()
+		FakeExport.error = ConnectorError("DATEV unavailable", response={"error": "down"})
+		batch = dispatch.collect(self.client_doc.name)
+		with patch("frappe.db.rollback"):
+			dispatch.send(batch)
+
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", batch, ["status", "message"]), ("Failed", "DATEV unavailable")
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", booking, ["status", "batch"]), ("Pending", None)
+		)
+		self.assertTrue(frappe.db.exists("DATEV Event Log", {"reference_name": batch, "event": "failed"}))
+
+		FakeExport.error = None
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.status(booking), "Exported")
+
+	def test_send_now_ignores_schedule(self):
+		self.client_doc.db_set({"dispatch_frequency": "Monthly", "last_dispatch_on": frappe.utils.now()})
+		booking = self.booking()
+		dispatch.send_now(self.client_doc.name)
+		self.assertEqual(self.status(booking), "Exported")
+
+	def test_approve_requires_permission(self):
+		self.client_doc.db_set({"approval_required": 1, "responsible_user": "approver@example.com"})
+		self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		with patch("frappe.get_roles", return_value=["Guest"]):
+			with self.assertRaises(frappe.PermissionError):
+				dispatch.approve(batch)
+			with patch.dict(frappe.session, {"user": "approver@example.com"}):
+				dispatch.approve(batch)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Sent")
+
+
+def only_own_client(client):
+	real_get_all = frappe.get_all
+
+	def get_all(doctype, *args, **kwargs):
+		key = {"DATEV Client": "name", "DATEV Batch": "client"}.get(doctype)
+		if key:
+			kwargs["filters"] = {**(kwargs.get("filters") or {}), key: client}
+		return real_get_all(doctype, *args, **kwargs)
+
+	return get_all
