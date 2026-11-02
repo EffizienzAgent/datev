@@ -5,7 +5,7 @@ from frappe.utils import add_to_date, now_datetime
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
 from datev.connectors.business_os import PROGRAM_CODE
-from datev.document_types import DocumentTypeError, resolve
+from datev.document_types import resolve
 from datev.events import log_event
 from datev.protect import internal
 
@@ -115,14 +115,9 @@ def retry(name: str) -> None:
 	if document.status != "Stuck":
 		return
 	client = frappe.get_doc("DATEV Client", document.client)
-	try:
-		document_type = resolve(client, document.direction, document.source_doctype, document.is_return)
-	except DocumentTypeError as error:
-		document.db_set("message", str(error))
-		raise
 	document.update(
 		{
-			"document_type": document_type,
+			"document_type": resolve(client, document.direction, document.source_doctype, document.is_return),
 			"status": "Pending",
 			"attempts": 0,
 			"next_attempt": None,
