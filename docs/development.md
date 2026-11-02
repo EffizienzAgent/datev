@@ -18,6 +18,16 @@ Lint:
 docker compose -f dev/compose.yaml exec bench bash -lc "cd /workspace/frappe-datev && ~/bench-data/frappe-bench/env/bin/ruff check . && ~/bench-data/frappe-bench/env/bin/ruff format --check ."
 ```
 
+## Demo data and screenshots
+
+`bench --site datev.test execute datev.demo.create` fills the site with a demo client, documents, party accounts and two batches (one exported with EXTF files, one awaiting approval). It is safe to re-run and makes no HTTP calls. Then, with the site served and Playwright installed:
+
+```
+DATEV_PASSWORD=admin python scripts/screenshots.py
+```
+
+writes the screenshots to `docs/images` (`DATEV_BASE`, `DATEV_USER`, `DATEV_SHOTS` change the defaults).
+
 ## Translations
 
 User-facing strings are wrapped in `_()` (Python) and `__()` (JavaScript); doctype metadata is extracted by Frappe. German is in `datev/locale/de.po`. After changing strings:
