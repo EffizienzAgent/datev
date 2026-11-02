@@ -69,7 +69,7 @@ msgstr "Konten"
 msgid "Amount"
 msgstr "Betrag"
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:22
+#: datev/datev/doctype/datev_booking/datev_booking.py:24
 msgid "Amount must be greater than zero."
 msgstr "Der Betrag muss größer als null sein."
 
@@ -790,7 +790,7 @@ msgstr "Letzter Personenkonten-Import am"
 msgid "Line Key"
 msgstr "Zeilenschlüssel"
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:30
+#: datev/datev/doctype/datev_booking/datev_booking.py:44
 #, python-brace-format
 msgid "Line key {0} already exists for this document."
 msgstr "Der Zeilenschlüssel {0} existiert für diesen Beleg bereits."
@@ -1014,6 +1014,11 @@ msgstr "Name des Geschäftspartners"
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:62
 msgid "Party Type"
 msgstr "Typ des Geschäftspartners"
+
+#: datev/datev/doctype/datev_booking/datev_booking.py:31
+#, python-brace-format
+msgid "Party account {0} belongs to another client."
+msgstr "Personenkonto {0} gehört zu einem anderen Mandanten."
 
 #: datev/connectors/datevconnect.py:216
 #, python-brace-format
@@ -1447,6 +1452,11 @@ msgstr "Sie dürfen Buchungsstapel dieses Mandanten nicht freigeben."
 #, python-brace-format
 msgid "{0} account numbers must be between {1} and {2}."
 msgstr "{0}-Kontonummern müssen zwischen {1} und {2} liegen."
+
+#: datev/datev/doctype/datev_booking/datev_booking.py:35
+#, python-brace-format
+msgid "{0} bookings need a {1} party account."
+msgstr "Buchungen vom Typ {0} benötigen ein Personenkonto vom Typ {1}."
 
 #: datev/datev/doctype/datev_client/datev_client.js:9
 #, python-brace-format

@@ -67,7 +67,7 @@ msgstr ""
 msgid "Amount"
 msgstr ""
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:22
+#: datev/datev/doctype/datev_booking/datev_booking.py:24
 msgid "Amount must be greater than zero."
 msgstr ""
 
@@ -790,7 +790,7 @@ msgstr ""
 msgid "Line Key"
 msgstr ""
 
-#: datev/datev/doctype/datev_booking/datev_booking.py:30
+#: datev/datev/doctype/datev_booking/datev_booking.py:44
 #, python-brace-format
 msgid "Line key {0} already exists for this document."
 msgstr ""
@@ -1013,6 +1013,11 @@ msgstr ""
 #. Label of the party_type (Link) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:62
 msgid "Party Type"
+msgstr ""
+
+#: datev/datev/doctype/datev_booking/datev_booking.py:31
+#, python-brace-format
+msgid "Party account {0} belongs to another client."
 msgstr ""
 
 #: datev/connectors/datevconnect.py:216
@@ -1446,6 +1451,11 @@ msgstr ""
 #: datev/datev/doctype/datev_party_account/datev_party_account.py:50
 #, python-brace-format
 msgid "{0} account numbers must be between {1} and {2}."
+msgstr ""
+
+#: datev/datev/doctype/datev_booking/datev_booking.py:35
+#, python-brace-format
+msgid "{0} bookings need a {1} party account."
 msgstr ""
 
 #: datev/datev/doctype/datev_client/datev_client.js:9
