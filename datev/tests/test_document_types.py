@@ -33,8 +33,8 @@ class TestDocumentTypes(IntegrationTestCase):
 		self.assertEqual(resolve(client, "Incoming", None, False), "Rechnungseingang")
 
 	def test_return_rule(self):
-		client = make_client(document_type_rules=[rule(document_type="Gutschrift/Storno", is_return="Yes")])
-		self.assertEqual(resolve(client, "Outgoing", None, True), "Gutschrift/Storno")
+		client = make_client(document_type_rules=[rule(document_type="Stornorechnung", is_return="Yes")])
+		self.assertEqual(resolve(client, "Outgoing", None, True), "Stornorechnung")
 		self.assertEqual(resolve(client, "Outgoing", None, False), "Rechnungsausgang")
 
 	def test_unknown_type_rejected_when_options_present(self):

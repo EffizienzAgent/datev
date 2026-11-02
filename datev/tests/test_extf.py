@@ -95,8 +95,8 @@ class TestBookingBatch(IntegrationTestCase):
 			debit_credit="H",
 			contra_account=4930,
 			bu_key="3",
-			posting_text="Gutschrift Müller",
-			document_field_1="GS-2027-0002",
+			posting_text="Stornorechnung Müller",
+			document_field_1="SR-2027-0002",
 		)
 		files = booking_batch.build(self.client, [first, second], CREATED, "Januar 2027")
 		self.assertEqual(len(files), 1)

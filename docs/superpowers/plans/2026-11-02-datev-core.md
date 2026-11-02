@@ -11,10 +11,10 @@
 **Spec:** `docs/superpowers/specs/2026-11-02-datev-app-design.md`
 
 **Reference material (local, not committed):**
-- DATEV format description (EXTF header, Buchungsstapel v13 with 125 columns, Debitoren/Kreditoren v5, charset): `/Users/tobi/Projekte/Fleetgroup/datev-recherche/datev-format-spec.json` (public DATEV developer portal content; extract column names from it, do not commit the file).
-- DATEVconnect accounting OpenAPI 1.7.4: `/Users/tobi/Projekte/Fleetgroup/datev-recherche/openapi/datevconnect-accounting-1.7.4.json`.
+- DATEV format description (EXTF header, Buchungsstapel v13 with 125 columns, Debitoren/Kreditoren v5, charset): local reference, not committed (public DATEV developer portal content; column names are extracted from it).
+- DATEVconnect accounting OpenAPI 1.7.4: local reference, not committed.
 - Business OS OpenAPI: https://docs.business-os.de/api-reference/openapi.json
-- Repo conventions: `/Users/tobi/Projekte/frappe-docarchive` (pyproject, CI, release, README shape).
+- Repo conventions: the `frappe-docarchive` app (pyproject, CI, release, README shape).
 
 ## Global Constraints
 
@@ -37,7 +37,7 @@
 2. **A batch spanning two fiscal years** (bookings from Dec and Jan in one weekly batch): DATEVconnect needs one call per fiscal year, EXTF one file per fiscal year with matching header dates. Pinned in Task 9 (`test_split_by_fiscal_year`) and Task 11 (`test_groups_by_fiscal_year_and_direction`).
 3. **Hostile text** in posting texts, party names and invoice numbers (quotes, semicolons, line breaks, emoji, characters outside cp1252, overlong values, invoice numbers with spaces or `#`): EXTF must stay parseable and DATEV's length/charset limits must hold. Pinned in Task 9 (`test_text_sanitising`, `test_document_field_1_charset`).
 4. **Cancellation invoices** (credit notes): sign/direction must invert correctly in EXTF (S/H flip, positive amount) and DATEVconnect (negative amount). Pinned in Task 9 and Task 11 (`test_credit_note_sign`). Sign behaviour in DATEVconnect is confirmed at the trial import (spec open question 3).
-5. **Business OS rate limit or exhausted credits** (HTTP 429, 402/403 with credit code, 5xx, timeouts): the document stays pending and retries with backoff; it is only "Stuck" after the last attempt, and low credits raise a notification. Pinned in Task 6 (`test_rate_limit_is_retryable`) and Task 8 (`test_backoff_then_stuck`).
+5. **Business OS rate limit or exhausted credits** (HTTP 429, 402/403 with credit code, 5xx, timeouts): rate limits, 5xx and timeouts keep the document pending and retry with backoff, and it is only "Stuck" after the last attempt; 402/403 credit errors are not retryable and make the document "Stuck" at once (ruling R22). Low credits raise a notification. Pinned in Task 6 (`test_rate_limit_is_retryable`) and Task 8 (`test_backoff_then_stuck`).
 
 ---
 
@@ -92,8 +92,8 @@ Roles (created in `datev/setup.py` `after_install`/`after_migrate`): `DATEV Mana
 
 **Files:**
 - Create: everything top-level from the File Structure list except `docs/*.md` content beyond a stub `docs/development.md`; `datev/__init__.py` (`__version__ = "0.1.0"`), `datev/hooks.py`, `datev/modules.txt`, `datev/patches.txt`, `datev/datev/__init__.py`, `datev/setup.py`, `datev/tests/__init__.py`, `datev/tests/test_install.py`
-- Copy-adapt from `/Users/tobi/Projekte/frappe-docarchive`: `pyproject.toml` (name `datev`, description "DATEV integration for the Frappe Framework: documents with Beleglink, EXTF and DATEVconnect", no extra dependencies), `.editorconfig`, `.gitignore` (`datev/public/dist/`), `renovate.json` (only the frappe + frappe-bench managers), `release-please-config.json`, `.release-please-manifest.json` (`{".": "0.1.0"}`), `.github/workflows/release.yml` (unchanged), `.github/workflows/test.yml` (no MinIO/s3storage/JS steps, `SITE: datev.test`, app `datev`), `.github/versions.env` (only `FRAPPE_BRANCH=version-16` and the same `FRAPPE_COMMIT` as docarchive), `license.txt` (MIT, "EffizienzAgent (Tobias Mende)").
-- Copy-adapt from `/Users/tobi/Projekte/inocea-crm/dev/`: `dev/compose.yaml` (project name `frappe-datev`, mount `..:/workspace/frappe-datev`, port `8010:8000`), `dev/bootstrap.sh` (no pinned extra apps; `bench get-app --soft-link /workspace/frappe-datev`; site `datev.test`; install `datev`; `allow_tests`, `developer_mode`), `dev/test.sh` (runs `bench --site datev.test run-tests --app datev "$@"`).
+- Copy-adapt from the `frappe-docarchive` app: `pyproject.toml` (name `datev`, description "DATEV integration for the Frappe Framework: documents with Beleglink, EXTF and DATEVconnect", no extra dependencies), `.editorconfig`, `.gitignore` (`datev/public/dist/`), `renovate.json` (only the frappe + frappe-bench managers), `release-please-config.json`, `.release-please-manifest.json` (`{".": "0.1.0"}`), `.github/workflows/release.yml` (unchanged), `.github/workflows/test.yml` (no MinIO/s3storage/JS steps, `SITE: datev.test`, app `datev`), `.github/versions.env` (only `FRAPPE_BRANCH=version-16` and the same `FRAPPE_COMMIT` as docarchive), `license.txt` (MIT, "EffizienzAgent (Tobias Mende)").
+- Copy-adapt from an existing dev setup: `dev/compose.yaml` (project name `frappe-datev`, mount `..:/workspace/frappe-datev`, port `8010:8000`), `dev/bootstrap.sh` (no pinned extra apps; `bench get-app --soft-link /workspace/frappe-datev`; site `datev.test`; install `datev`; `allow_tests`, `developer_mode`), `dev/test.sh` (runs `bench --site datev.test run-tests --app datev "$@"`).
 
 **Interfaces:**
 - Produces: `datev.hooks` keys `app_name = "datev"`, `app_title = "DATEV"`, `after_install = after_migrate = "datev.setup.apply_defaults"`; `datev.setup.apply_defaults() -> None` creates roles `DATEV Manager`, `DATEV User` if missing.
@@ -187,7 +187,7 @@ Expected: ends without error; `bench --site datev.test list-apps` shows `datev`.
 - `class DocumentTypeError(frappe.ValidationError)`
 - `resolve(client, direction: str, source_doctype: str | None, is_return: bool) -> str` — first matching rule in table order wins (rule matches when `direction` equal, `source_doctype` empty or equal, `is_return` Any or equal); no rule → `DEFAULT_TYPES[direction]`. If `client.document_type_options` is non-empty, the result must be one of its `document_type` values, else `DocumentTypeError` naming the type.
 
-- [ ] **Step 1: Failing tests:** `test_default_per_direction`, `test_rule_order_first_match`, `test_return_rule` (rule Outgoing/Yes → "Gutschrift/Storno" wins only for returns), `test_unknown_type_rejected_when_options_present`, `test_any_type_allowed_without_options`.
+- [ ] **Step 1: Failing tests:** `test_default_per_direction`, `test_rule_order_first_match`, `test_return_rule` (rule Outgoing/Yes → "Stornorechnung" wins only for returns), `test_unknown_type_rejected_when_options_present`, `test_any_type_allowed_without_options`.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `feat: resolve document types per client`
 
