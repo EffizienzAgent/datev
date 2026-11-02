@@ -89,6 +89,21 @@ class TestDATEVconnectClient(IntegrationTestCase):
 		self.assertTrue(request.call_args.args[1].endswith("/fiscal-years/20260101/debitors/next-available"))
 
 	@patch("datev.http.requests.request")
+	def test_malformed_bodies_raise_datevconnect_error(self, request):
+		calls = (
+			(lambda: self.client.next_available(CLIENT, "20260101", "debitors"), ({"id": "1"}, None, [1])),
+			(lambda: self.client.client_id_for(55003, 29098), ([{"number": "55003"}], ["x"], {"a": 1})),
+			(lambda: self.client.fiscal_years(CLIENT), ({"id": "1"}, [{"name": "x"}], ["x"], None)),
+		)
+		for call, bodies in calls:
+			for body in bodies:
+				with self.subTest(body=body):
+					request.return_value = fake_response(200, body)
+					with self.assertRaises(DATEVconnectError) as raised:
+						call()
+					self.assertEqual(str(raised.exception), "Unexpected response from DATEVconnect.")
+
+	@patch("datev.http.requests.request")
 	def test_put_party_content_type(self, request):
 		request.return_value = fake_response(200, {"id": "1"})
 		self.client.put_party(CLIENT, "20260101", "creditors", {"name": "A"})

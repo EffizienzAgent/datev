@@ -7,7 +7,14 @@ from frappe.tests import IntegrationTestCase
 from datev.connectors.base import ConnectorError, RemoteParty
 from datev.extf import master_data
 from datev.intake import ensure_party_account
-from datev.parties import assign_number, clear_remote_cache, ensure_in_datev, import_existing, normalize_name
+from datev.parties import (
+	assign_number,
+	clear_remote_cache,
+	ensure_in_datev,
+	import_existing,
+	normalize_name,
+	retry_party,
+)
 from datev.tests.factories import make_client, make_party_account
 
 
@@ -27,6 +34,9 @@ def use_connector(connector):
 class TestPartyAccounts(IntegrationTestCase):
 	def setUp(self):
 		clear_remote_cache()
+		patcher = patch("frappe.db.commit")
+		self.commit = patcher.start()
+		self.addCleanup(patcher.stop)
 		self.client = make_client()
 
 	def test_ensure_party_account_idempotent(self):
@@ -83,6 +93,7 @@ class TestPartyAccounts(IntegrationTestCase):
 		self.assertEqual((account.account_number, account.sync_status), (10040, "Created"))
 
 	def test_ensure_in_datev_via_export_stays_new(self):
+		import_existing(self.client.name, [RemoteParty("Debtor", 10051, "Other")])
 		account = make_party_account(self.client, preferred_number=10050)
 		connector = fake_connector(can_fetch=False, creates_via_export=True)
 		with use_connector(connector):
@@ -90,6 +101,90 @@ class TestPartyAccounts(IntegrationTestCase):
 		connector.create_party.assert_not_called()
 		account.reload()
 		self.assertEqual((account.account_number, account.sync_status), (10050, "New"))
+
+	def test_via_export_requires_recorded_import(self):
+		account = make_party_account(self.client, preferred_number=10052)
+		with use_connector(fake_connector(can_fetch=False, creates_via_export=True)):
+			self.assertFalse(ensure_in_datev(account))
+		account.reload()
+		self.assertEqual(account.sync_status, "To Clarify")
+		self.assertEqual(account.message, "Match DATEV accounts from a master data file first.")
+
+		import_existing(self.client.name, [])
+		with use_connector(fake_connector(can_fetch=False, creates_via_export=True)):
+			self.assertEqual(retry_party(account.name), "New")
+
+	def test_via_export_checks_number_against_last_import(self):
+		self.client.import_parties_from_file(
+			self.master_data_file([(10070, "Bestand GmbH"), (10071, "Fremd AG")])
+		)
+		self.assertTrue(frappe.db.get_value("DATEV Client", self.client.name, "last_party_import_on"))
+		same = make_party_account(self.client, preferred_number=10070, party_name="Bestand")
+		other = make_party_account(self.client, preferred_number=10071, party_name="Neu GmbH")
+		with use_connector(fake_connector(can_fetch=False, creates_via_export=True)):
+			self.assertTrue(ensure_in_datev(same))
+			self.assertFalse(ensure_in_datev(other))
+		same.reload()
+		other.reload()
+		self.assertEqual((same.sync_status, same.account_number), ("Imported", 10070))
+		self.assertEqual((other.sync_status, other.account_number), ("To Clarify", 0))
+		self.assertIn("Fremd AG", other.message)
+
+	def master_data_file(self, rows):
+		exported = [
+			frappe._dict(account_number=number, party_name=name, vat_id=None, iban=None)
+			for number, name in rows
+		]
+		content = master_data.build(make_client(), exported, datetime(2027, 1, 31, 10, 30))
+		return (
+			frappe.get_doc({"doctype": "File", "file_name": "stamm.csv", "content": content, "is_private": 1})
+			.insert()
+			.file_url
+		)
+
+	def test_created_party_is_committed(self):
+		account = make_party_account(self.client, preferred_number=10080)
+		connector = fake_connector()
+		with use_connector(connector):
+			self.assertTrue(ensure_in_datev(account))
+		self.commit.assert_called_once()
+		self.assertEqual(
+			frappe.db.get_value("DATEV Party Account", account.name, ["account_number", "sync_status"]),
+			(10080, "Created"),
+		)
+
+	def test_retryable_error_keeps_party_new(self):
+		account = make_party_account(self.client, preferred_number=10090)
+		connector = fake_connector()
+		connector.fetch_parties.side_effect = ConnectorError("timeout", retryable=True)
+		with use_connector(connector):
+			self.assertFalse(ensure_in_datev(account))
+		account.reload()
+		self.assertEqual((account.sync_status, account.message), ("New", "timeout"))
+		self.commit.assert_not_called()
+
+		connector.fetch_parties.side_effect = None
+		with use_connector(connector):
+			self.assertTrue(ensure_in_datev(account))
+		self.assertEqual(frappe.db.get_value("DATEV Party Account", account.name, "sync_status"), "Created")
+
+	def test_retry_party(self):
+		account = make_party_account(self.client, preferred_number=10100)
+		connector = fake_connector()
+		connector.create_party.side_effect = ConnectorError("Rejected")
+		with use_connector(connector):
+			self.assertFalse(ensure_in_datev(account))
+		self.assertEqual(frappe.db.get_value("DATEV Party Account", account.name, "sync_status"), "Error")
+
+		connector.create_party.side_effect = None
+		with use_connector(connector):
+			self.assertEqual(retry_party(account.name), "Created")
+			with self.assertRaises(frappe.ValidationError):
+				retry_party(account.name)
+		with patch("frappe.only_for", side_effect=frappe.PermissionError) as only_for:
+			with self.assertRaises(frappe.PermissionError):
+				retry_party(account.name)
+		only_for.assert_called_once_with("DATEV Manager")
 
 	def test_number_collision_to_clarify(self):
 		remote = [

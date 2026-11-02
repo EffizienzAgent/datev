@@ -336,9 +336,10 @@ class TestDATEVconnectMasterData(IntegrationTestCase):
 				]
 			return [{"account_number": 700010000, "legal_person": {"legal_name": "Beta AG"}}]
 
+		years = [{"id": "20260101", "is_locked": False}, {"id": "20270101", "is_locked": False}]
 		with (
 			patch(f"{API}.parties", side_effect=parties) as mocked,
-			patch("datev.connectors.datevconnect.today", return_value="2027-03-01"),
+			patch(f"{API}.fiscal_years", return_value=years),
 		):
 			result = DATEVconnectMasterData(self.client).fetch_parties()
 		self.assertEqual({call.args[1] for call in mocked.call_args_list}, {"20270101"})
@@ -351,9 +352,22 @@ class TestDATEVconnectMasterData(IntegrationTestCase):
 		)
 
 	def test_next_number(self):
-		with patch(f"{API}.next_available", return_value=100020000) as mocked:
+		with (
+			patch(f"{API}.next_available", return_value=100020000) as mocked,
+			patch(f"{API}.fiscal_years", return_value=[{"id": "20260101"}]),
+		):
 			self.assertEqual(DATEVconnectMasterData(self.client).next_number("Creditor"), 10002)
-		self.assertEqual(mocked.call_args.args[2], "creditors")
+		self.assertEqual(mocked.call_args.args[1:3], ("20260101", "creditors"))
+
+	def test_reads_fall_back_to_current_fiscal_year(self):
+		locked = [{"id": "20280101", "is_locked": True}]
+		with (
+			patch(f"{API}.next_available", return_value=100020000) as mocked,
+			patch(f"{API}.fiscal_years", return_value=locked),
+			patch("datev.connectors.datevconnect.today", return_value="2027-03-01"),
+		):
+			DATEVconnectMasterData(self.client).next_number("Debtor")
+		self.assertEqual(mocked.call_args.args[1], "20270101")
 
 	def test_create_party_in_unlocked_years(self):
 		party = make_party_account(self.client, account_number=10003, party_name="Gamma KG", vat_id="DE 999")

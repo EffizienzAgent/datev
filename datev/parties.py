@@ -2,6 +2,7 @@ import re
 
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
 
 from datev.connectors.base import ConnectorError, RemoteParty
 from datev.connectors.registry import get_master_data
@@ -68,22 +69,77 @@ def ensure_in_datev(party_account) -> bool:
 		assign_number(party_account)
 		party_account.save(ignore_permissions=True)
 		if connector.creates_via_export:
-			return True
+			return check_last_import(client, party_account)
 		if connector.can_fetch:
 			remote = find_remote(remote_parties(client), party_account.kind, party_account.account_number)
 			if remote:
 				return link_existing(party_account, remote)
 		connector.create_party(party_account)
-		if connector.can_fetch:
-			remote_parties(client).append(
-				RemoteParty(party_account.kind, party_account.account_number, party_account.party_name)
-			)
-		set_status(party_account, "Created", "", "created")
-		return True
-	except (ConnectorError, frappe.ValidationError) as error:
-		party_account.db_set({"sync_status": "Error", "message": str(error)})
-		log_event(PARTY, party_account.name, "error", str(error))
+	except ConnectorError as error:
+		if error.retryable:
+			party_account.db_set("message", str(error))
+			log_event(PARTY, party_account.name, "retry", str(error), error.response)
+		else:
+			mark_error(party_account, str(error), error.response)
 		return False
+	except frappe.ValidationError as error:
+		mark_error(party_account, str(error))
+		return False
+
+	if connector.can_fetch:
+		remote_parties(client).append(
+			RemoteParty(party_account.kind, party_account.account_number, party_account.party_name)
+		)
+	party_account.db_set(
+		{"account_number": party_account.account_number, "sync_status": "Created", "message": ""}
+	)
+	log_event(PARTY, party_account.name, "created")
+	# The account now exists in DATEV: commit so a later rollback cannot lose it.
+	frappe.db.commit()
+	return True
+
+
+def mark_error(party_account, message: str, response: object = None) -> None:
+	party_account.db_set({"sync_status": "Error", "message": message})
+	log_event(PARTY, party_account.name, "error", message, response)
+
+
+def check_last_import(client, party_account) -> bool:
+	if not client.last_party_import_on:
+		message = _("Match DATEV accounts from a master data file first.")
+		set_status(party_account, "To Clarify", message, "to_clarify")
+		return False
+	remote = find_remote(last_import(client), party_account.kind, party_account.account_number)
+	if remote:
+		return link_existing(party_account, remote)
+	return True
+
+
+def last_import(client) -> list[RemoteParty]:
+	rows = frappe.parse_json(client.last_party_import or "[]")
+	return [RemoteParty(row["kind"], int(row["account_number"]), row.get("name") or "") for row in rows]
+
+
+def record_import(client: str, remote: list[RemoteParty]) -> None:
+	rows = [{"kind": p.kind, "account_number": p.account_number, "name": p.name} for p in remote]
+	frappe.db.set_value(
+		"DATEV Client",
+		client,
+		{"last_party_import": frappe.as_json(rows, indent=None), "last_party_import_on": now_datetime()},
+	)
+
+
+@frappe.whitelist()
+def retry_party(party_account: str) -> str:
+	frappe.only_for("DATEV Manager")
+	doc = frappe.get_doc(PARTY, party_account, for_update=True)
+	if doc.sync_status not in ("Error", "To Clarify"):
+		frappe.throw(_("Only party accounts with an error or to clarify can be retried."))
+	clear_remote_cache()
+	doc.db_set({"sync_status": "New", "message": ""})
+	log_event(PARTY, doc.name, "retried")
+	ensure_in_datev(doc)
+	return doc.sync_status
 
 
 def find_remote(remote: list[RemoteParty], kind: str, number: int) -> RemoteParty | None:
@@ -113,6 +169,7 @@ def import_existing(client: str, remote: list[RemoteParty] | None = None) -> dic
 	client_doc = frappe.get_doc("DATEV Client", client)
 	if remote is None:
 		remote = get_master_data(client_doc).fetch_parties()
+	record_import(client, remote)
 	linked = {
 		(row.kind, row.account_number): row.name
 		for row in frappe.get_all(

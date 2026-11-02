@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:26+0000\n"
-"PO-Revision-Date: 2026-11-02 11:26+0000\n"
+"POT-Creation-Date: 2026-11-02 11:29+0000\n"
+"PO-Revision-Date: 2026-11-02 11:29+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
@@ -16,22 +16,22 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: datev/dispatch.py:294
+#: datev/dispatch.py:311
 msgid "A reason is required to reset a booking."
 msgstr ""
 
 #. Label of the bos_api_key (Password) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:181
+#: datev/datev/doctype/datev_client/datev_client.json:183
 msgid "API Key"
 msgstr ""
 
 #. Label of the account_length (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:133
+#: datev/datev/doctype/datev_client/datev_client.json:135
 msgid "Account Length"
 msgstr ""
 
 #. Label of the account_mappings (Table) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:398
+#: datev/datev/doctype/datev_client/datev_client.json:414
 msgid "Account Mappings"
 msgstr ""
 
@@ -55,7 +55,7 @@ msgstr ""
 
 #. Label of the accounts_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:351
+#: datev/datev/doctype/datev_client/datev_client.json:353
 msgid "Accounts"
 msgstr ""
 
@@ -78,7 +78,7 @@ msgid "Any"
 msgstr ""
 
 #. Label of the approval_required (Check) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:321
+#: datev/datev/doctype/datev_client/datev_client.json:323
 msgid "Approval Required"
 msgstr ""
 
@@ -128,7 +128,7 @@ msgid "BU Key"
 msgstr ""
 
 #. Label of the dc_base_url (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:240
+#: datev/datev/doctype/datev_client/datev_client.json:242
 msgid "Base URL"
 msgstr ""
 
@@ -157,7 +157,7 @@ msgstr ""
 msgid "Batched"
 msgstr ""
 
-#: datev/dispatch.py:161
+#: datev/dispatch.py:178
 #, python-brace-format
 msgid "Booking {0} cannot be held."
 msgstr ""
@@ -177,7 +177,7 @@ msgstr ""
 msgid "Booking {0} has no party account number."
 msgstr ""
 
-#: datev/dispatch.py:163
+#: datev/dispatch.py:180
 #, python-brace-format
 msgid "Booking {0} is in a batch that is no longer awaiting approval."
 msgstr ""
@@ -185,8 +185,8 @@ msgstr ""
 #. Option for the 'Storage Connector' (Select) field in DocType 'DATEV Client'
 #. Label of the business_os_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:158
-#: datev/datev/doctype/datev_client/datev_client.json:175
+#: datev/datev/doctype/datev_client/datev_client.json:160
+#: datev/datev/doctype/datev_client/datev_client.json:177
 msgid "Business OS"
 msgstr ""
 
@@ -200,7 +200,7 @@ msgid "Category"
 msgstr ""
 
 #. Label of the chart (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:139
+#: datev/datev/doctype/datev_client/datev_client.json:141
 msgid "Chart"
 msgstr ""
 
@@ -217,18 +217,18 @@ msgid "Client"
 msgstr ""
 
 #. Label of the client_number (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:121
+#: datev/datev/doctype/datev_client/datev_client.json:123
 #: datev/tests/test_translations.py:47
 msgid "Client Number"
 msgstr ""
 
 #. Label of the company (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:103
+#: datev/datev/doctype/datev_client/datev_client.json:105
 msgid "Company"
 msgstr ""
 
 #. Description of the 'Company' (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:104
+#: datev/datev/doctype/datev_client/datev_client.json:106
 msgid "Company in the source system"
 msgstr ""
 
@@ -237,18 +237,18 @@ msgid "Connection"
 msgstr ""
 
 #. Label of the bos_connection_id (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:186
+#: datev/datev/doctype/datev_client/datev_client.json:188
 msgid "Connection ID"
 msgstr ""
 
 #. Label of the connectors_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:152
+#: datev/datev/doctype/datev_client/datev_client.json:154
 msgid "Connectors"
 msgstr ""
 
 #. Label of the consultant_number (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:114
+#: datev/datev/doctype/datev_client/datev_client.json:116
 msgid "Consultant Number"
 msgstr ""
 
@@ -267,7 +267,7 @@ msgid "Created"
 msgstr ""
 
 #. Label of the bos_credit_warning (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:209
+#: datev/datev/doctype/datev_client/datev_client.json:211
 msgid "Credit Warning Threshold"
 msgstr ""
 
@@ -277,12 +277,12 @@ msgid "Creditor"
 msgstr ""
 
 #. Label of the creditor_numbering (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:363
+#: datev/datev/doctype/datev_client/datev_client.json:365
 msgid "Creditor Numbering"
 msgstr ""
 
 #. Label of the bos_credits (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:203
+#: datev/datev/doctype/datev_client/datev_client.json:205
 msgid "Credits"
 msgstr ""
 
@@ -391,16 +391,16 @@ msgstr ""
 msgid "DATEV User"
 msgstr ""
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:10
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:21
 msgid "DATEV account number"
 msgstr ""
 
-#: datev/parties.py:97
+#: datev/parties.py:153
 #, python-brace-format
 msgid "DATEV account {0} already exists as {1}. Check the account and resolve it manually."
 msgstr ""
 
-#: datev/parties.py:153
+#: datev/parties.py:210
 #, python-brace-format
 msgid "DATEV account {0} is also claimed by {1}."
 msgstr ""
@@ -416,7 +416,7 @@ msgstr ""
 
 #. Option for the 'Debtor Numbering' (Select) field in DocType 'DATEV Client'
 #. Option for the 'Creditor Numbering' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:357
+#: datev/datev/doctype/datev_client/datev_client.json:359
 msgid "DATEV next available"
 msgstr ""
 
@@ -425,28 +425,28 @@ msgstr ""
 #. Client'
 #. Label of the datevconnect_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:164
-#: datev/datev/doctype/datev_client/datev_client.json:170
-#: datev/datev/doctype/datev_client/datev_client.json:234
+#: datev/datev/doctype/datev_client/datev_client.json:166
+#: datev/datev/doctype/datev_client/datev_client.json:172
+#: datev/datev/doctype/datev_client/datev_client.json:236
 msgid "DATEVconnect"
 msgstr ""
 
 #. Label of the dc_client_id (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:266
+#: datev/datev/doctype/datev_client/datev_client.json:268
 msgid "DATEVconnect Client ID"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:216
+#: datev/connectors/datevconnect.py:221
 msgid "DATEVconnect has no open fiscal year for this client."
 msgstr ""
 
 #. Label of the duo_email (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:220
+#: datev/datev/doctype/datev_client/datev_client.json:222
 msgid "DUo E-mail"
 msgstr ""
 
 #. Option for the 'Dispatch Frequency' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:295
+#: datev/datev/doctype/datev_client/datev_client.json:297
 msgid "Daily"
 msgstr ""
 
@@ -461,11 +461,11 @@ msgid "Debtor"
 msgstr ""
 
 #. Label of the debtor_numbering (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:356
+#: datev/datev/doctype/datev_client/datev_client.json:358
 msgid "Debtor Numbering"
 msgstr ""
 
-#: datev/dispatch.py:218 datev/dispatch.py:242
+#: datev/dispatch.py:235 datev/dispatch.py:259
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr ""
 
@@ -483,22 +483,22 @@ msgstr ""
 
 #. Label of the dispatch_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:289
+#: datev/datev/doctype/datev_client/datev_client.json:291
 msgid "Dispatch"
 msgstr ""
 
 #. Label of the dispatch_day_of_month (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:309
+#: datev/datev/doctype/datev_client/datev_client.json:311
 msgid "Dispatch Day Of Month"
 msgstr ""
 
 #. Label of the dispatch_frequency (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:294
+#: datev/datev/doctype/datev_client/datev_client.json:296
 msgid "Dispatch Frequency"
 msgstr ""
 
 #. Label of the dispatch_weekday (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:301
+#: datev/datev/doctype/datev_client/datev_client.json:303
 msgid "Dispatch Weekday"
 msgstr ""
 
@@ -545,18 +545,18 @@ msgid "Document Type"
 msgstr ""
 
 #. Label of the document_type_options (Table) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:277
+#: datev/datev/doctype/datev_client/datev_client.json:279
 msgid "Document Type Options"
 msgstr ""
 
 #. Label of the document_type_rules (Table) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:283
+#: datev/datev/doctype/datev_client/datev_client.json:285
 msgid "Document Type Rules"
 msgstr ""
 
 #. Label of the document_types_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:272
+#: datev/datev/doctype/datev_client/datev_client.json:274
 msgid "Document Types"
 msgstr ""
 
@@ -585,38 +585,38 @@ msgid "Due Date"
 msgstr ""
 
 #. Label of the email_section (Section Break) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:215
+#: datev/datev/doctype/datev_client/datev_client.json:217
 msgid "E-mail"
 msgstr ""
 
 #. Option for the 'Storage Connector' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:158
+#: datev/datev/doctype/datev_client/datev_client.json:160
 msgid "E-mail to DUo"
 msgstr ""
 
 #. Option for the 'Master Data Connector' (Select) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:170
+#: datev/datev/doctype/datev_client/datev_client.json:172
 msgid "EXTF"
 msgstr ""
 
 #. Label of the extf_email (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:227
+#: datev/datev/doctype/datev_client/datev_client.json:229
 msgid "EXTF E-mail"
 msgstr ""
 
 #. Option for the 'Export Connector' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:164
+#: datev/datev/doctype/datev_client/datev_client.json:166
 msgid "EXTF download"
 msgstr ""
 
 #. Option for the 'Export Connector' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:164
+#: datev/datev/doctype/datev_client/datev_client.json:166
 msgid "EXTF e-mail"
 msgstr ""
 
 #. Label of the enabled (Check) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:96
+#: datev/datev/doctype/datev_client/datev_client.json:98
 msgid "Enabled"
 msgstr ""
 
@@ -633,7 +633,7 @@ msgstr ""
 #. Label of the export_connector (Data) field in DocType 'DATEV Batch'
 #. Label of the export_connector (Select) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_batch/datev_batch.json:53
-#: datev/datev/doctype/datev_client/datev_client.json:163
+#: datev/datev/doctype/datev_client/datev_client.json:165
 msgid "Export Connector"
 msgstr ""
 
@@ -680,7 +680,7 @@ msgid "Fiscal Year"
 msgstr ""
 
 #. Label of the fiscal_year_start_month (Int) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:146
+#: datev/datev/doctype/datev_client/datev_client.json:148
 msgid "Fiscal Year Start Month"
 msgstr ""
 
@@ -688,13 +688,13 @@ msgstr ""
 msgid "Fiscal year start month must be between 1 and 12."
 msgstr ""
 
-#: datev/connectors/datevconnect.py:223
+#: datev/connectors/datevconnect.py:228
 #, python-brace-format
 msgid "Fiscal year {0}: {1}"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Friday"
 msgstr ""
 
@@ -724,7 +724,7 @@ msgid "IBAN"
 msgstr ""
 
 #. Label of the bos_id_mode (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:191
+#: datev/datev/doctype/datev_client/datev_client.json:193
 msgid "ID Mode"
 msgstr ""
 
@@ -765,8 +765,18 @@ msgid "Kind"
 msgstr ""
 
 #. Label of the last_dispatch_on (Datetime) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:345
+#: datev/datev/doctype/datev_client/datev_client.json:347
 msgid "Last Dispatch On"
+msgstr ""
+
+#. Label of the last_party_import (JSON) field in DocType 'DATEV Client'
+#: datev/datev/doctype/datev_client/datev_client.json:396
+msgid "Last Party Import"
+msgstr ""
+
+#. Label of the last_party_import_on (Datetime) field in DocType 'DATEV Client'
+#: datev/datev/doctype/datev_client/datev_client.json:389
+msgid "Last Party Import On"
 msgstr ""
 
 #. Label of the line_key (Data) field in DocType 'DATEV Booking'
@@ -780,13 +790,13 @@ msgid "Line key {0} already exists for this document."
 msgstr ""
 
 #. Label of the mandate_section (Section Break) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:109
+#: datev/datev/doctype/datev_client/datev_client.json:111
 msgid "Mandate"
 msgstr ""
 
 #. Label of the mappings_section (Section Break) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:387
+#: datev/datev/doctype/datev_client/datev_client.json:403
 msgid "Mappings"
 msgstr ""
 
@@ -794,8 +804,8 @@ msgstr ""
 msgid "Mark all bookings of this batch as delivered to DATEV?"
 msgstr ""
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:5
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:18
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:16
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:29
 msgid "Mark resolved"
 msgstr ""
 
@@ -804,7 +814,7 @@ msgid "Mark this batch as not delivered? Its bookings will be sent again."
 msgstr ""
 
 #. Label of the master_data_connector (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:169
+#: datev/datev/doctype/datev_client/datev_client.json:171
 msgid "Master Data Connector"
 msgstr ""
 
@@ -814,7 +824,7 @@ msgstr ""
 
 #. Label of the match_creditors_by_number (Check) field in DocType 'DATEV
 #. Client'
-#: datev/datev/doctype/datev_client/datev_client.json:381
+#: datev/datev/doctype/datev_client/datev_client.json:383
 msgid "Match Creditors By Number"
 msgstr ""
 
@@ -823,8 +833,12 @@ msgstr ""
 msgid "Match DATEV accounts"
 msgstr ""
 
+#: datev/parties.py:109
+msgid "Match DATEV accounts from a master data file first."
+msgstr ""
+
 #. Label of the match_debtors_by_number (Check) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:375
+#: datev/datev/doctype/datev_client/datev_client.json:377
 msgid "Match Debtors By Number"
 msgstr ""
 
@@ -852,12 +866,12 @@ msgid "Missing fields: {0}"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Monday"
 msgstr ""
 
 #. Option for the 'Dispatch Frequency' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:295
+#: datev/datev/doctype/datev_client/datev_client.json:297
 msgid "Monthly"
 msgstr ""
 
@@ -877,6 +891,11 @@ msgstr ""
 msgid "No"
 msgstr ""
 
+#: datev/clients/datevconnect.py:50
+#, python-brace-format
+msgid "No DATEVconnect client {0}/{1}"
+msgstr ""
+
 #: datev/connectors/extf.py:70
 msgid "No EXTF e-mail address is set for this client."
 msgstr ""
@@ -890,7 +909,7 @@ msgstr ""
 msgid "No bookings are ready to send."
 msgstr ""
 
-#: datev/dispatch.py:174
+#: datev/dispatch.py:191
 msgid "No bookings left to send."
 msgstr ""
 
@@ -920,11 +939,15 @@ msgstr ""
 msgid "Numbering by DATEV requires the DATEVconnect master data connector."
 msgstr ""
 
-#: datev/dispatch.py:269
+#: datev/dispatch.py:286
 msgid "Only batches that are still sending can be resolved."
 msgstr ""
 
-#: datev/dispatch.py:297
+#: datev/parties.py:137
+msgid "Only party accounts with an error or to clarify can be retried."
+msgstr ""
+
+#: datev/dispatch.py:314
 msgid "Only transferred, exported or failed bookings can be reset."
 msgstr ""
 
@@ -986,12 +1009,12 @@ msgstr ""
 msgid "Party Type"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:211
+#: datev/connectors/datevconnect.py:216
 #, python-brace-format
 msgid "Party account {0} has no account number."
 msgstr ""
 
-#: datev/parties.py:53
+#: datev/parties.py:54
 #, python-brace-format
 msgid "Party account {0} has no preferred number from the source system."
 msgstr ""
@@ -1002,7 +1025,7 @@ msgid "Party account {0} is not ready: {1}"
 msgstr ""
 
 #. Label of the dc_password (Password) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:250
+#: datev/datev/doctype/datev_client/datev_client.json:252
 msgid "Password"
 msgstr ""
 
@@ -1061,7 +1084,7 @@ msgstr ""
 msgid "Reference Name"
 msgstr ""
 
-#: datev/connectors/datevconnect.py:92 datev/connectors/datevconnect.py:222
+#: datev/connectors/datevconnect.py:92 datev/connectors/datevconnect.py:227
 msgid "Rejected by DATEVconnect."
 msgstr ""
 
@@ -1070,7 +1093,7 @@ msgid "Release"
 msgstr ""
 
 #. Label of the require_document_link (Check) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:339
+#: datev/datev/doctype/datev_client/datev_client.json:341
 msgid "Require Document Link"
 msgstr ""
 
@@ -1078,7 +1101,7 @@ msgstr ""
 msgid "Reset"
 msgstr ""
 
-#: datev/dispatch.py:300
+#: datev/dispatch.py:317
 #, python-brace-format
 msgid "Reset from {0}: {1}"
 msgstr ""
@@ -1099,13 +1122,17 @@ msgid "Response"
 msgstr ""
 
 #. Label of the responsible_role (Link) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:327
+#: datev/datev/doctype/datev_client/datev_client.json:329
 msgid "Responsible Role"
 msgstr ""
 
 #. Label of the responsible_user (Link) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:333
+#: datev/datev/doctype/datev_client/datev_client.json:335
 msgid "Responsible User"
+msgstr ""
+
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:7
+msgid "Retry"
 msgstr ""
 
 #: datev/datev/doctype/datev_client/datev_client.py:64
@@ -1124,21 +1151,21 @@ msgid "S"
 msgstr ""
 
 #. Option for the 'Chart' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:140
+#: datev/datev/doctype/datev_client/datev_client.json:142
 msgid "SKR03"
 msgstr ""
 
 #. Option for the 'Chart' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:140
+#: datev/datev/doctype/datev_client/datev_client.json:142
 msgid "SKR04"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Saturday"
 msgstr ""
 
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:19
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:30
 msgid "Save"
 msgstr ""
 
@@ -1151,7 +1178,7 @@ msgid "Send bookings now"
 msgstr ""
 
 #. Option for the 'ID Mode' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:192
+#: datev/datev/doctype/datev_client/datev_client.json:194
 msgid "Send own ID"
 msgstr ""
 
@@ -1174,7 +1201,7 @@ msgstr ""
 msgid "Sent On"
 msgstr ""
 
-#: datev/parties.py:137
+#: datev/parties.py:194
 #, python-brace-format
 msgid "Several DATEV accounts match: {0}"
 msgstr ""
@@ -1208,7 +1235,7 @@ msgstr ""
 
 #. Option for the 'Debtor Numbering' (Select) field in DocType 'DATEV Client'
 #. Option for the 'Creditor Numbering' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:357
+#: datev/datev/doctype/datev_client/datev_client.json:359
 msgid "Source system"
 msgstr ""
 
@@ -1222,7 +1249,7 @@ msgid "Status"
 msgstr ""
 
 #. Label of the storage_connector (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:157
+#: datev/datev/doctype/datev_client/datev_client.json:159
 msgid "Storage Connector"
 msgstr ""
 
@@ -1242,7 +1269,7 @@ msgid "Stuck Documents"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Sunday"
 msgstr ""
 
@@ -1257,7 +1284,7 @@ msgid "Tax Code"
 msgstr ""
 
 #. Label of the tax_keys (Table) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:392
+#: datev/datev/doctype/datev_client/datev_client.json:408
 msgid "Tax Keys"
 msgstr ""
 
@@ -1287,7 +1314,7 @@ msgstr ""
 msgid "The document is already in DATEV. Create a cancellation invoice instead."
 msgstr ""
 
-#: datev/dispatch.py:235
+#: datev/dispatch.py:252
 msgid "The export connector returned no result."
 msgstr ""
 
@@ -1310,12 +1337,12 @@ msgid "This party already has an account."
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Thursday"
 msgstr ""
 
 #. Label of the title (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:88
+#: datev/datev/doctype/datev_client/datev_client.json:90
 msgid "Title"
 msgstr ""
 
@@ -1334,8 +1361,12 @@ msgid "Transferred (30 days)"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Tuesday"
+msgstr ""
+
+#: datev/clients/datevconnect.py:26
+msgid "Unexpected response from DATEVconnect."
 msgstr ""
 
 #: datev/connectors/registry.py:13
@@ -1353,12 +1384,12 @@ msgid "Uploaded"
 msgstr ""
 
 #. Option for the 'ID Mode' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:192
+#: datev/datev/doctype/datev_client/datev_client.json:194
 msgid "Use returned ID"
 msgstr ""
 
 #. Label of the dc_username (Data) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:245
+#: datev/datev/doctype/datev_client/datev_client.json:247
 msgid "Username"
 msgstr ""
 
@@ -1368,18 +1399,24 @@ msgid "VAT ID"
 msgstr ""
 
 #. Label of the dc_verify_tls (Check) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:260
+#: datev/datev/doctype/datev_client/datev_client.json:262
 msgid "Verify TLS Certificate"
 msgstr ""
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:302
+#: datev/datev/doctype/datev_client/datev_client.json:304
 msgid "Wednesday"
 msgstr ""
 
 #. Option for the 'Dispatch Frequency' (Select) field in DocType 'DATEV Client'
-#: datev/datev/doctype/datev_client/datev_client.json:295
+#: datev/datev/doctype/datev_client/datev_client.json:297
 msgid "Weekly"
+msgstr ""
+
+#. Description of the 'Last Party Import On' (Datetime) field in DocType 'DATEV
+#. Client'
+#: datev/datev/doctype/datev_client/datev_client.json:391
+msgid "When DATEV accounts were last matched. EXTF clients check new account numbers against this import."
 msgstr ""
 
 #. Option for the 'Is Return' (Select) field in DocType 'DATEV Document Type
@@ -1388,7 +1425,7 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: datev/dispatch.py:145
+#: datev/dispatch.py:162
 msgid "You are not allowed to approve batches of this client."
 msgstr ""
 
@@ -1422,7 +1459,7 @@ msgstr ""
 msgid "{0} must be an integer."
 msgstr ""
 
-#: datev/dispatch.py:239
+#: datev/dispatch.py:256
 #, python-brace-format
 msgid "{0} sent, {1} failed."
 msgstr ""

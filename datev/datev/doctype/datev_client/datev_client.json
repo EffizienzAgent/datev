@@ -77,6 +77,8 @@
   "accounts_column",
   "match_debtors_by_number",
   "match_creditors_by_number",
+  "last_party_import_on",
+  "last_party_import",
   "mappings_section",
   "tax_keys",
   "account_mappings"
@@ -380,6 +382,20 @@
    "fieldtype": "Check",
    "label": "Match Creditors By Number",
    "default": "0"
+  },
+  {
+   "fieldname": "last_party_import_on",
+   "fieldtype": "Datetime",
+   "label": "Last Party Import On",
+   "read_only": 1,
+   "description": "When DATEV accounts were last matched. EXTF clients check new account numbers against this import."
+  },
+  {
+   "fieldname": "last_party_import",
+   "fieldtype": "JSON",
+   "label": "Last Party Import",
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "mappings_section",

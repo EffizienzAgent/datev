@@ -189,10 +189,14 @@ class DATEVconnectMasterData(DATEVconnectMixin, MasterDataConnector):
 	def current_fiscal_year(self) -> str:
 		return fiscal_year_id(self.client.name, getdate(today()))
 
+	def read_fiscal_year(self, api: DATEVconnect, client_id: str) -> str:
+		years = [year["id"] for year in api.fiscal_years(client_id) if not year.get("is_locked")]
+		return max(years) if years else self.current_fiscal_year()
+
 	def fetch_parties(self) -> list[RemoteParty]:
 		api = self.api()
 		client_id = self.client_id(api)
-		fiscal_year = self.current_fiscal_year()
+		fiscal_year = self.read_fiscal_year(api, client_id)
 		factor = technical_factor(self.client)
 		return [
 			remote_party(kind, row, factor)
@@ -203,7 +207,8 @@ class DATEVconnectMasterData(DATEVconnectMixin, MasterDataConnector):
 
 	def next_number(self, kind: str) -> int:
 		api = self.api()
-		number = api.next_available(self.client_id(api), self.current_fiscal_year(), PARTY_KINDS[kind])
+		client_id = self.client_id(api)
+		number = api.next_available(client_id, self.read_fiscal_year(api, client_id), PARTY_KINDS[kind])
 		return int(number) // technical_factor(self.client)
 
 	def create_party(self, party_account) -> None:

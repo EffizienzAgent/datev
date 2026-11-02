@@ -8,7 +8,8 @@ from frappe.tests import IntegrationTestCase
 
 from datev import dispatch, intake
 from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
-from datev.tests.factories import make_client, make_document, make_party_account
+from datev.tests.factories import make_client as make_any_client
+from datev.tests.factories import make_document, make_party_account
 from datev.tests.test_datevconnect_client import fake_response
 from datev.tests.test_export_connectors import dc_client
 
@@ -38,6 +39,11 @@ class FakeExport(ExportConnector):
 real_get_hooks = frappe.get_hooks
 
 
+def make_client(**overrides):
+	values = {"last_party_import": "[]", "last_party_import_on": frappe.utils.now_datetime()}
+	return make_any_client(**{**values, **overrides})
+
+
 def fake_hooks(name=None, *args, **kwargs):
 	if name == "datev_export_connectors":
 		return [
@@ -55,10 +61,12 @@ class TestDispatch(IntegrationTestCase):
 		FakeExport.rejected = set()
 		FakeExport.uncertain = set()
 		FakeExport.error = None
-		for target in ("frappe.get_hooks", "frappe.db.commit"):
-			patcher = patch(target, fake_hooks) if target == "frappe.get_hooks" else patch(target)
+		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
 			patcher.start()
 			self.addCleanup(patcher.stop)
+		enqueue = patch("frappe.enqueue")
+		self.enqueue = enqueue.start()
+		self.addCleanup(enqueue.stop)
 		self.client_doc = make_client(approval_required=0, dispatch_frequency="Daily")
 		self.party = make_party_account(self.client_doc, preferred_number=10001)
 
@@ -186,6 +194,11 @@ class TestDispatch(IntegrationTestCase):
 		self.assertEqual(FakeExport.calls, [])
 
 		dispatch.approve(batch)
+		self.enqueue.assert_called_once_with(
+			"datev.dispatch.send", queue="long", enqueue_after_commit=True, batch=batch
+		)
+		self.assertEqual(FakeExport.calls, [])
+		dispatch.send(batch)
 		approved = frappe.get_doc("DATEV Batch", batch)
 		self.assertEqual((approved.status, approved.approved_by), ("Sent", frappe.session.user))
 		self.assertTrue(approved.approved_on)
@@ -254,6 +267,7 @@ class TestDispatch(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("DATEV Booking", held, "batch"), second)
 
 		dispatch.approve(batch)
+		dispatch.send(batch)
 		with self.assertRaises(frappe.ValidationError):
 			dispatch.hold(kept)
 		self.assertEqual(self.status(kept), "Exported")
@@ -368,7 +382,12 @@ class TestDispatch(IntegrationTestCase):
 	def test_send_now_ignores_schedule(self):
 		self.client_doc.db_set({"dispatch_frequency": "Monthly", "last_dispatch_on": frappe.utils.now()})
 		booking = self.booking()
-		dispatch.send_now(self.client_doc.name)
+		batch = dispatch.send_now(self.client_doc.name)
+		self.assertEqual(self.status(booking), "Batched")
+		self.enqueue.assert_called_once_with(
+			"datev.dispatch.send", queue="long", enqueue_after_commit=True, batch=batch
+		)
+		dispatch.send(batch)
 		self.assertEqual(self.status(booking), "Exported")
 
 	def test_approve_requires_permission(self):
@@ -380,7 +399,7 @@ class TestDispatch(IntegrationTestCase):
 				dispatch.approve(batch)
 			with patch.dict(frappe.session, {"user": "approver@example.com"}):
 				dispatch.approve(batch)
-		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Sent")
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Approved")
 
 	def uncertain_batch(self):
 		booking = self.booking()

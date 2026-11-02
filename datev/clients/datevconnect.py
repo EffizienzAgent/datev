@@ -1,3 +1,5 @@
+from frappe import _
+
 from datev import http
 from datev.connectors.base import ConnectorError
 
@@ -20,6 +22,10 @@ class DATEVconnectError(ConnectorError):
 		self.maybe_sent = maybe_sent
 
 
+def unexpected(data) -> DATEVconnectError:
+	return DATEVconnectError(_("Unexpected response from DATEVconnect."), response=data)
+
+
 class DATEVconnect:
 	def __init__(self, base_url: str, username: str, password: str, verify: bool = True):
 		self.base_url = base_url.rstrip("/")
@@ -31,15 +37,22 @@ class DATEVconnect:
 		return self._call("GET", "/clients")
 
 	def client_id_for(self, client_number: int, consultant_number: int) -> str:
-		for item in self.clients():
-			if str(item.get("number")) != str(client_number):
-				continue
-			if str(item.get("consultant_number", consultant_number)) == str(consultant_number):
-				return item["id"]
-		raise DATEVconnectError(f"No DATEVconnect client {consultant_number}/{client_number}")
+		clients = self.clients()
+		try:
+			for item in clients:
+				if str(item.get("number")) != str(client_number):
+					continue
+				if str(item.get("consultant_number", consultant_number)) == str(consultant_number):
+					return str(item["id"])
+		except AttributeError, KeyError, TypeError:
+			raise unexpected(clients) from None
+		raise DATEVconnectError(_("No DATEVconnect client {0}/{1}").format(consultant_number, client_number))
 
 	def fiscal_years(self, client_id: str) -> list[dict]:
-		return self._call("GET", f"/clients/{client_id}/fiscal-years")
+		years = self._call("GET", f"/clients/{client_id}/fiscal-years")
+		if not isinstance(years, list) or not all(isinstance(y, dict) and y.get("id") for y in years):
+			raise unexpected(years)
+		return years
 
 	def post_proposals(self, client_id: str, fiscal_year_id: str, direction: str, items: list[dict]):
 		if direction not in PROPOSAL_DIRECTIONS:
@@ -56,7 +69,11 @@ class DATEVconnect:
 
 	def next_available(self, client_id: str, fiscal_year_id: str, kind: str) -> int:
 		path = self._party_path(client_id, fiscal_year_id, kind) + "/next-available"
-		return self._call("GET", path)["account_number"]
+		data = self._call("GET", path)
+		try:
+			return int(data["account_number"])
+		except KeyError, TypeError, ValueError:
+			raise unexpected(data) from None
 
 	def put_party(self, client_id: str, fiscal_year_id: str, kind: str, payload: list[dict]) -> dict:
 		return self._call(

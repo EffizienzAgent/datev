@@ -83,6 +83,8 @@ def is_overdue(client, now) -> bool:
 def collect(client: str) -> str | None:
 	frappe.db.get_value(CLIENT, client, "name", for_update=True)
 	client_doc = frappe.get_doc(CLIENT, client)
+	if not client_doc.enabled:
+		return None
 	ready = []
 	for name in frappe.get_all(
 		BOOKING,
@@ -98,6 +100,7 @@ def collect(client: str) -> str | None:
 			booking.db_set({"status": "Stuck", "message": message})
 		else:
 			ready.append(booking)
+	ready = still_open(client, ready)
 	if not ready:
 		return None
 
@@ -117,6 +120,20 @@ def collect(client: str) -> str | None:
 	return batch.name
 
 
+def still_open(client: str, bookings: list) -> list:
+	frappe.db.get_value(CLIENT, client, "name", for_update=True)
+	result = []
+	for booking in bookings:
+		current = frappe.db.get_value(BOOKING, booking.name, ["status", "batch", "held"], for_update=True)
+		if current and current[0] in OPEN_BOOKING_STATUSES and not current[1] and not current[2]:
+			result.append(booking)
+	return result
+
+
+def enqueue_send(batch: str) -> None:
+	frappe.enqueue("datev.dispatch.send", queue="long", enqueue_after_commit=True, batch=batch)
+
+
 @frappe.whitelist()
 def approve(batch: str) -> None:
 	client = frappe.db.get_value(BATCH, batch, "client")
@@ -131,7 +148,7 @@ def approve(batch: str) -> None:
 		{"status": "Approved", "approved_by": frappe.session.user, "approved_on": now_datetime()},
 	)
 	log_event(BATCH, batch, "approved")
-	send(batch)
+	enqueue_send(batch)
 
 
 def check_approver(client) -> None:
@@ -328,5 +345,5 @@ def send_now(client: str) -> str | None:
 	frappe.only_for(DISPATCH_ROLES)
 	batch = collect(client)
 	if batch:
-		send(batch)
+		enqueue_send(batch)
 	return batch
