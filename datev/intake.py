@@ -6,6 +6,7 @@ from datev.document_types import DocumentTypeError, resolve
 from datev.events import log_event
 
 DOCUMENT = "DATEV Document"
+PARTY_ACCOUNT = "DATEV Party Account"
 
 
 def upsert_document(
@@ -93,3 +94,34 @@ def discard_document(source_key: str) -> None:
 		"DATEV Booking", filters={"document": document.name, "status": "Pending"}, pluck="name"
 	):
 		frappe.delete_doc("DATEV Booking", booking, ignore_permissions=True)
+
+
+def ensure_party_account(
+	client: str,
+	kind: str,
+	*,
+	party_type: str | None,
+	party: str | None,
+	party_name: str,
+	vat_id: str | None = None,
+	iban: str | None = None,
+	preferred_number: int | None = None,
+) -> str:
+	filters = {"client": client, "kind": kind}
+	if party_type and party:
+		filters.update({"party_type": party_type, "party": party})
+	else:
+		filters.update({"party": ("is", "not set"), "party_name": party_name})
+	name = frappe.db.get_value(PARTY_ACCOUNT, filters, "name")
+	if name:
+		account = frappe.get_doc(PARTY_ACCOUNT, name)
+	else:
+		account = frappe.new_doc(PARTY_ACCOUNT)
+		account.update(
+			{"client": client, "kind": kind, "party_type": party_type, "party": party, "sync_status": "New"}
+		)
+	account.update(
+		{"party_name": party_name, "vat_id": vat_id, "iban": iban, "preferred_number": preferred_number}
+	)
+	account.save(ignore_permissions=True)
+	return account.name

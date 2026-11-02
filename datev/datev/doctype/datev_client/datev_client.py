@@ -6,6 +6,8 @@ from frappe.model.document import Document
 
 from datev.clients.business_os import BusinessOS
 from datev.connectors.registry import get_storage
+from datev.extf import master_data
+from datev.parties import import_existing
 
 BU_KEY_PATTERN = re.compile(r"^\d{0,4}$")
 DC = "DATEVconnect"
@@ -102,3 +104,16 @@ class DATEVClient(Document):
 				}
 			)
 		return rows
+
+	@frappe.whitelist()
+	def import_parties(self) -> dict:
+		frappe.only_for("DATEV Manager")
+		return import_existing(self.name)
+
+	@frappe.whitelist()
+	def import_parties_from_file(self, file_url: str) -> dict:
+		frappe.only_for("DATEV Manager")
+		file = frappe.get_doc("File", {"file_url": file_url})
+		with open(file.get_full_path(), "rb") as f:
+			content = f.read()
+		return import_existing(self.name, master_data.parse(content))
