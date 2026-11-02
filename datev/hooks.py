@@ -23,3 +23,7 @@ datev_master_data_connectors = {
 	"DATEVconnect": "datev.connectors.datevconnect.DATEVconnectMasterData",
 	"EXTF": "datev.connectors.extf.ExtfMasterData",
 }
+
+scheduler_events = {
+	"cron": {"*/5 * * * *": ["datev.documents.retry_due"]},
+}
