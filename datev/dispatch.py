@@ -1,6 +1,8 @@
+from datetime import datetime, time, timedelta
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, now_datetime
+from frappe.utils import add_to_date, getdate, now_datetime
 
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
@@ -48,6 +50,32 @@ def is_due(client, now) -> bool:
 	if client.dispatch_frequency == "Weekly" and WEEKDAYS[today.weekday()] != client.dispatch_weekday:
 		return False
 	return not last or last < today
+
+
+def previous_due_date(client, today):
+	for days in range(1, 63):
+		day = today - timedelta(days=days)
+		if is_due(frappe._dict(client.as_dict(), last_dispatch_on=None), datetime.combine(day, time.max)):
+			return day
+	return None
+
+
+def is_overdue(client, now) -> bool:
+	due_date = previous_due_date(client, now.date())
+	if not due_date or not is_due(client, datetime.combine(due_date, time.max)):
+		return False
+	if frappe.db.exists(BOOKING, {"client": client.name, "status": ("in", ("Pending", "Stuck")), "held": 0}):
+		return True
+	return bool(
+		frappe.db.exists(
+			BATCH,
+			{
+				"client": client.name,
+				"status": "Awaiting Approval",
+				"creation": ("<", add_to_date(now, hours=-24)),
+			},
+		)
+	)
 
 
 def collect(client: str) -> str | None:

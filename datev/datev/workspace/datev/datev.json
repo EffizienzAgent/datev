@@ -1,0 +1,80 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"s0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DATEV Status\",\"col\":4}},{\"id\":\"s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DATEV Client\",\"col\":4}},{\"id\":\"s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DATEV Batch\",\"col\":4}},{\"id\":\"s3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DATEV Booking\",\"col\":4}},{\"id\":\"s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DATEV Document\",\"col\":4}},{\"id\":\"s5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DATEV Party Account\",\"col\":4}}]",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "file-text",
+ "idx": 0,
+ "indicator_color": "blue",
+ "is_hidden": 0,
+ "label": "DATEV",
+ "link_type": "DocType",
+ "links": [],
+ "module": "DATEV",
+ "name": "DATEV",
+ "number_cards": [],
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "DATEV Manager"
+  },
+  {
+   "role": "DATEV User"
+  }
+ ],
+ "sequence_id": 60.0,
+ "shortcuts": [
+  {
+   "label": "DATEV Status",
+   "type": "Report",
+   "link_to": "DATEV Status",
+   "report_ref_doctype": "DATEV Client",
+   "color": "Blue"
+  },
+  {
+   "label": "DATEV Client",
+   "type": "DocType",
+   "link_to": "DATEV Client",
+   "doc_view": "List"
+  },
+  {
+   "label": "DATEV Batch",
+   "type": "DocType",
+   "link_to": "DATEV Batch",
+   "doc_view": "List",
+   "stats_filter": "[[\"DATEV Batch\", \"status\", \"=\", \"Awaiting Approval\"]]",
+   "color": "Orange"
+  },
+  {
+   "label": "DATEV Booking",
+   "type": "DocType",
+   "link_to": "DATEV Booking",
+   "doc_view": "List",
+   "stats_filter": "[[\"DATEV Booking\", \"status\", \"=\", \"Stuck\"]]",
+   "color": "Red"
+  },
+  {
+   "label": "DATEV Document",
+   "type": "DocType",
+   "link_to": "DATEV Document",
+   "doc_view": "List",
+   "stats_filter": "[[\"DATEV Document\", \"status\", \"=\", \"Stuck\"]]",
+   "color": "Red"
+  },
+  {
+   "label": "DATEV Party Account",
+   "type": "DocType",
+   "link_to": "DATEV Party Account",
+   "doc_view": "List",
+   "stats_filter": "[[\"DATEV Party Account\", \"sync_status\", \"=\", \"To Clarify\"]]",
+   "color": "Orange"
+  }
+ ],
+ "standard": 1,
+ "title": "DATEV",
+ "type": "Workspace"
+}
