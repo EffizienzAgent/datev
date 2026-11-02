@@ -62,7 +62,8 @@
    "label": "Document",
    "options": "DATEV Document",
    "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "read_only": 1
   },
   {
    "fieldname": "line_key",
@@ -81,12 +82,14 @@
    "fieldname": "party_account",
    "fieldtype": "Link",
    "label": "Party Account",
-   "options": "DATEV Party Account"
+   "options": "DATEV Party Account",
+   "read_only": 1
   },
   {
    "fieldname": "contra_account",
    "fieldtype": "Int",
-   "label": "Contra Account"
+   "label": "Contra Account",
+   "read_only": 1
   },
   {
    "fieldname": "debit_credit",
@@ -98,7 +101,8 @@
    "fieldname": "amount",
    "fieldtype": "Currency",
    "label": "Amount",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "read_only": 1
   },
   {
    "fieldname": "currency",
@@ -148,7 +152,8 @@
    "options": "Pending\nBatched\nStuck\nTransferred\nExported\nFailed",
    "default": "Pending",
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "read_only": 1
   },
   {
    "fieldname": "held",
@@ -159,7 +164,8 @@
    "fieldname": "batch",
    "fieldtype": "Link",
    "label": "Batch",
-   "options": "DATEV Batch"
+   "options": "DATEV Batch",
+   "read_only": 1
   },
   {
    "fieldname": "message",

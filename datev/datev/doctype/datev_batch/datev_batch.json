@@ -59,7 +59,8 @@
    "options": "Awaiting Approval\nApproved\nSending\nSent\nPartially Sent\nFailed",
    "default": "Awaiting Approval",
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "read_only": 1
   },
   {
    "fieldname": "approved_by",

@@ -129,17 +129,20 @@
   {
    "fieldname": "guid",
    "fieldtype": "Data",
-   "label": "GUID"
+   "label": "GUID",
+   "read_only": 1
   },
   {
    "fieldname": "external_id",
    "fieldtype": "Data",
-   "label": "External ID"
+   "label": "External ID",
+   "read_only": 1
   },
   {
    "fieldname": "program_code",
    "fieldtype": "Data",
-   "label": "Program Code"
+   "label": "Program Code",
+   "read_only": 1
   },
   {
    "fieldname": "status",
@@ -148,7 +151,8 @@
    "options": "Pending\nUploaded\nNo Link\nStuck\nDiscarded",
    "default": "Pending",
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "read_only": 1
   },
   {
    "fieldname": "attempts",

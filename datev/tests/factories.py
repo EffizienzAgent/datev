@@ -1,5 +1,7 @@
 import frappe
 
+from datev.protect import internal
+
 
 def make_client(**overrides):
 	values = {
@@ -30,7 +32,7 @@ def make_document(client, **overrides):
 		"amount": 119,
 	}
 	values.update(overrides)
-	return frappe.get_doc(values).insert()
+	return internal(frappe.get_doc(values)).insert()
 
 
 def make_party_account(client, kind="Debtor", **overrides):
@@ -59,4 +61,4 @@ def make_booking(document, party_account, **overrides):
 		"document_date": document.document_date,
 	}
 	values.update(overrides)
-	return frappe.get_doc(values).insert()
+	return internal(frappe.get_doc(values)).insert()

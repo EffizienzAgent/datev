@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
@@ -6,6 +7,7 @@ from frappe.utils import add_to_date, now_datetime
 
 from datev import dispatch, notify
 from datev.datev.report.datev_status.datev_status import execute
+from datev.protect import internal
 from datev.tests.factories import make_booking, make_client, make_document, make_party_account
 
 BATCH = "DATEV Batch"
@@ -23,7 +25,7 @@ def make_user(role=None):
 
 def make_batch(client, **values):
 	values = {"doctype": BATCH, "client": client.name, "status": "Awaiting Approval", **values}
-	return frappe.get_doc(values).insert(ignore_permissions=True)
+	return internal(frappe.get_doc(values)).insert(ignore_permissions=True)
 
 
 def logs(user, **filters):
@@ -32,6 +34,9 @@ def logs(user, **filters):
 
 class TestNotify(IntegrationTestCase):
 	def setUp(self):
+		patcher = patch("frappe.db.commit")
+		patcher.start()
+		self.addCleanup(patcher.stop)
 		self.client_doc = make_client(approval_required=1, dispatch_frequency="Daily", bos_credit_warning=0)
 		self.user = make_user()
 		self.client_doc.db_set("responsible_user", self.user)

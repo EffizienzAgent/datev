@@ -9,6 +9,7 @@ from datev.connectors.base import ConnectorError
 from datev.events import log_event
 from datev.intake import BOOKING, OPEN_BOOKING_STATUSES
 from datev.parties import ensure_in_datev, set_status
+from datev.protect import internal
 
 CLIENT = "DATEV Client"
 BATCH = "DATEV Batch"
@@ -17,6 +18,7 @@ PARTY = "DATEV Party Account"
 DISPATCH_ROLES = ["DATEV User", "DATEV Manager"]
 LINKED_STATUSES = ("Uploaded", "No Link")
 MANDATORY_FIELDS = ("party_account", "contra_account", "document_field_1", "document_date")
+RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
@@ -99,13 +101,15 @@ def collect(client: str) -> str | None:
 	if not ready:
 		return None
 
-	batch = frappe.get_doc(
-		{
-			"doctype": BATCH,
-			"client": client,
-			"export_connector": client_doc.export_connector,
-			"status": "Awaiting Approval" if client_doc.approval_required else "Approved",
-		}
+	batch = internal(
+		frappe.get_doc(
+			{
+				"doctype": BATCH,
+				"client": client,
+				"export_connector": client_doc.export_connector,
+				"status": "Awaiting Approval" if client_doc.approval_required else "Approved",
+			}
+		)
 	).insert(ignore_permissions=True)
 	for booking in ready:
 		booking.db_set({"status": "Batched", "batch": batch.name, "message": ""})
@@ -280,6 +284,20 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 		status, event = ("Partially Sent" if partly else "Failed"), "resolved_not_delivered"
 	frappe.db.set_value(BATCH, batch, {"status": status, "message": "", "sent_on": now_datetime()})
 	log_event(BATCH, batch, event)
+
+
+@frappe.whitelist()
+def reset_booking(booking: str, reason: str) -> None:
+	frappe.only_for("DATEV Manager")
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A reason is required to reset a booking."))
+	doc = frappe.get_doc(BOOKING, booking, for_update=True)
+	if doc.status not in RESETTABLE_STATUSES:
+		frappe.throw(_("Only transferred, exported or failed bookings can be reset."))
+	previous = doc.status
+	doc.db_set({"status": "Pending", "batch": None, "message": reason})
+	log_event(BOOKING, booking, "reset", _("Reset from {0}: {1}").format(_(previous), reason))
 
 
 def run() -> None:

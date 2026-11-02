@@ -4,6 +4,7 @@ from frappe.utils import add_to_date, now_datetime
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
 from datev.events import log_event
+from datev.protect import internal
 
 BACKOFF_MINUTES = (5, 30, 120, 720)
 MAX_ATTEMPTS = 5
@@ -27,7 +28,7 @@ def upload(name: str) -> None:
 	document.status = "Uploaded" if result.external_id else "No Link"
 	document.message = ""
 	document.next_attempt = None
-	document.save(ignore_permissions=True)
+	internal(document).save(ignore_permissions=True)
 	log_event(DOCUMENT, name, "uploaded", response=result.response)
 
 
@@ -41,7 +42,7 @@ def handle_failure(document, error: ConnectorError) -> None:
 		document.status = "Stuck"
 		document.next_attempt = None
 		event = "upload_failed"
-	document.save(ignore_permissions=True)
+	internal(document).save(ignore_permissions=True)
 	log_event(DOCUMENT, document.name, event, str(error), error.response)
 
 

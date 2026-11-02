@@ -4,10 +4,15 @@ from frappe.model.document import Document
 from frappe.utils import getdate
 
 from datev.fiscal import fiscal_year_id
+from datev.protect import reject_manual_changes
+
+PROTECTED = ("status", "batch", "amount", "party_account", "contra_account", "document")
+STATE = ("status", "batch")
 
 
 class DATEVBooking(Document):
 	def validate(self):
+		reject_manual_changes(self, PROTECTED, STATE)
 		self.validate_amount()
 		self.validate_line_key()
 		self.set_fiscal_year()

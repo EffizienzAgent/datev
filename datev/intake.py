@@ -4,6 +4,7 @@ from frappe import _
 from datev.beleglink import new_guid
 from datev.document_types import DocumentTypeError, resolve
 from datev.events import log_event
+from datev.protect import internal
 
 DOCUMENT = "DATEV Document"
 PARTY_ACCOUNT = "DATEV Party Account"
@@ -50,6 +51,7 @@ def upsert_document(
 			"is_return": is_return,
 		}
 	)
+	internal(document)
 	document.guid = document.guid or new_guid()
 	try:
 		document.document_type = resolve(
@@ -134,7 +136,7 @@ def add_booking(
 			{"parent": source.client, "parenttype": "DATEV Client", "tax_code": tax_code},
 			"bu_key",
 		)
-	booking = frappe.get_doc(BOOKING, existing.name) if existing else frappe.new_doc(BOOKING)
+	booking = internal(frappe.get_doc(BOOKING, existing.name) if existing else frappe.new_doc(BOOKING))
 	booking.update(
 		{
 			"client": source.client,
