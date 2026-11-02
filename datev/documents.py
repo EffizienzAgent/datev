@@ -18,17 +18,24 @@ def upload(name: str) -> None:
 		return
 	document = frappe.get_doc(DOCUMENT, name)
 	client = frappe.get_doc("DATEV Client", document.client)
+	if not client.enabled:
+		return
 	try:
 		result = registry.get_storage(client).upload(document)
 	except ConnectorError as error:
 		handle_failure(document, error)
 		return
-	document.external_id = result.external_id
-	document.program_code = result.program_code
-	document.status = "Uploaded" if result.external_id else "No Link"
-	document.message = ""
-	document.next_attempt = None
-	internal(document).save(ignore_permissions=True)
+	document.db_set(
+		{
+			"external_id": result.external_id,
+			"program_code": result.program_code,
+			"status": "Uploaded" if result.external_id else "No Link",
+			"message": "",
+			"next_attempt": None,
+		}
+	)
+	# The document is in DATEV now: commit so a later error cannot roll the link back.
+	frappe.db.commit()
 	log_event(DOCUMENT, name, "uploaded", response=result.response)
 
 

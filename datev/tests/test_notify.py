@@ -148,11 +148,22 @@ class TestNotify(IntegrationTestCase):
 		client = frappe.get_doc("DATEV Client", self.client_doc.name)
 		client.db_set({"bos_credits": 3, "bos_credit_warning": 10})
 		notify.check()
+		self.assertEqual(len(logs(self.user)), 0)
+
+		client.db_set("bos_credits_updated_on", now_datetime())
+		notify.check()
 		notify.check()
 		self.assertEqual(len(logs(self.user)), 1)
 
 		other = make_client(storage_connector="E-mail to DUo", duo_email="duo@example.com")
-		other.db_set({"bos_credits": 3, "bos_credit_warning": 10, "responsible_user": self.user})
+		other.db_set(
+			{
+				"bos_credits": 3,
+				"bos_credits_updated_on": now_datetime(),
+				"bos_credit_warning": 10,
+				"responsible_user": self.user,
+			}
+		)
 		notify.check()
 		self.assertEqual(len(logs(self.user)), 1)
 

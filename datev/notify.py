@@ -63,6 +63,7 @@ def status_counts(client: str, now) -> dict:
 def low_credits(client) -> bool:
 	return bool(
 		client.storage_connector == "Business OS"
+		and client.bos_credits_updated_on
 		and client.bos_credit_warning
 		and (client.bos_credits or 0) < client.bos_credit_warning
 	)

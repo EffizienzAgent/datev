@@ -1,6 +1,8 @@
 import base64
 import os
 
+from frappe import _
+
 from datev import http
 from datev.connectors.base import ConnectorError
 
@@ -17,10 +19,12 @@ class BusinessOSError(ConnectorError):
 		status: int | None = None,
 		retryable: bool = False,
 		response: object = None,
+		maybe_sent: bool = False,
 	):
 		super().__init__(message, retryable=retryable, response=response)
 		self.code = code
 		self.status = status
+		self.maybe_sent = maybe_sent
 
 
 class BusinessOS:
@@ -56,7 +60,10 @@ class BusinessOS:
 			body["id"] = id
 		if note:
 			body["belegnotiz"] = note[:60]
-		return self._call("POST", "/v2/datev-duo/beleg-bereitstellen", json=body)
+		data = self._call("POST", "/v2/datev-duo/beleg-bereitstellen", json=body)
+		if not isinstance(data, dict) or not data.get("id"):
+			raise BusinessOSError(_("Unexpected response from Business OS."), response=data)
+		return data
 
 	def _call(self, method: str, path: str, json=None) -> dict:
 		params = {"quelle": SOURCE}
@@ -72,7 +79,7 @@ class BusinessOS:
 				timeout=60,
 			)
 		except http.TransportError as e:
-			raise BusinessOSError(str(e), retryable=True) from e
+			raise BusinessOSError(str(e), retryable=True, maybe_sent=e.maybe_sent) from e
 
 		if 200 <= response.status < 300:
 			return response.data

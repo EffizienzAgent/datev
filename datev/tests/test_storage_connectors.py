@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 import frappe
+import requests
 from frappe.tests import IntegrationTestCase
 
+from datev.clients.business_os import BusinessOSError
 from datev.connectors.registry import get_storage
 from datev.tests.factories import make_client, make_document
 
@@ -11,6 +13,9 @@ def fake_response(body):
 	response = MagicMock()
 	response.status_code = 200
 	response.json.return_value = body
+	if body is None:
+		response.json.side_effect = ValueError
+	response.text = ""
 	return response
 
 
@@ -67,7 +72,47 @@ class TestStorageConnectors(IntegrationTestCase):
 
 		get_storage(client).upload(document)
 
-		self.assertEqual(frappe.db.get_value("DATEV Client", client.name, "bos_credits"), 42)
+		credits_left, updated_on = frappe.db.get_value(
+			"DATEV Client", client.name, ["bos_credits", "bos_credits_updated_on"]
+		)
+		self.assertEqual(credits_left, 42)
+		self.assertTrue(updated_on)
+
+	@patch("datev.http.requests.request")
+	def test_credits_tolerate_missing_data(self, request):
+		client = make_client(bos_id_mode="Use returned ID")
+		document = self.make_document_with_file(client)
+		for body in ({"id": "x"}, {"id": "x", "business-os": None}, {"id": "x", "business-os": "n/a"}):
+			with self.subTest(body=body):
+				request.return_value = fake_response(body)
+				self.assertEqual(get_storage(client).upload(document).external_id, "x")
+		self.assertFalse(frappe.db.get_value("DATEV Client", client.name, "bos_credits_updated_on"))
+
+	@patch("datev.http.requests.request")
+	def test_unexpected_success_body_is_not_retryable(self, request):
+		for mode in ("Send own ID", "Use returned ID"):
+			client = make_client(bos_id_mode=mode)
+			document = self.make_document_with_file(client)
+			for body in (None, {"status": "ok"}, ["x"]):
+				with self.subTest(mode=mode, body=body):
+					request.return_value = fake_response(body)
+					with self.assertRaises(BusinessOSError) as raised:
+						get_storage(client).upload(document)
+					self.assertFalse(raised.exception.retryable)
+					self.assertEqual(str(raised.exception), "Unexpected response from Business OS.")
+
+	@patch("datev.http.requests.request", side_effect=requests.ReadTimeout("read timed out"))
+	def test_maybe_sent_upload_with_returned_id_is_not_retried(self, request):
+		client = make_client(bos_id_mode="Use returned ID")
+		with self.assertRaises(BusinessOSError) as raised:
+			get_storage(client).upload(self.make_document_with_file(client))
+		self.assertFalse(raised.exception.retryable)
+		self.assertEqual(str(raised.exception), "Upload may have reached DATEV. Check DUo before retrying.")
+
+		own = make_client(bos_id_mode="Send own ID")
+		with self.assertRaises(BusinessOSError) as raised:
+			get_storage(own).upload(self.make_document_with_file(own))
+		self.assertTrue(raised.exception.retryable)
 
 	@patch("frappe.sendmail")
 	def test_duo_email_has_no_link(self, sendmail):

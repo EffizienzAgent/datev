@@ -47,6 +47,7 @@
   "bos_id_mode",
   "business_os_column",
   "bos_credits",
+  "bos_credits_updated_on",
   "bos_credit_warning",
   "email_section",
   "duo_email",
@@ -203,6 +204,12 @@
    "fieldname": "bos_credits",
    "fieldtype": "Int",
    "label": "Credits",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bos_credits_updated_on",
+   "fieldtype": "Datetime",
+   "label": "Credits Updated On",
    "read_only": 1
   },
   {

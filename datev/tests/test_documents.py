@@ -56,9 +56,9 @@ class TestDocuments(IntegrationTestCase):
 		)
 		FakeStorage.calls = 0
 		FakeStorage.outcome = StorageResult(external_id="ID-1", program_code="DUO")
-		patcher = patch("frappe.get_hooks", fake_hooks)
-		patcher.start()
-		self.addCleanup(patcher.stop)
+		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
 		self.client_doc = make_client()
 
 	def test_upsert_sets_guid_and_type(self):
@@ -108,6 +108,28 @@ class TestDocuments(IntegrationTestCase):
 		doc = frappe.get_doc("DATEV Document", name)
 		self.assertEqual((doc.status, doc.external_id, doc.program_code), ("Uploaded", "ID-1", "DUO"))
 		self.assertTrue(frappe.db.exists("DATEV Event Log", {"reference_name": name, "event": "uploaded"}))
+
+	def test_upload_result_persisted_and_committed_before_logging(self):
+		name, _enqueue = upsert(self.client_doc)
+		with (
+			patch("datev.documents.log_event", side_effect=RuntimeError("log failed")),
+			patch("frappe.db.commit") as commit,
+		):
+			with self.assertRaises(RuntimeError):
+				documents.upload(name)
+		commit.assert_called_once()
+		self.assertEqual(
+			frappe.db.get_value("DATEV Document", name, ["status", "external_id"]), ("Uploaded", "ID-1")
+		)
+
+	def test_disabled_client_is_skipped(self):
+		self.client_doc.db_set("enabled", 0)
+		name, enqueue = upsert(self.client_doc)
+		self.assertEqual(upload_calls(enqueue), [])
+		documents.upload(name)
+		self.assertEqual(
+			(FakeStorage.calls, frappe.db.get_value("DATEV Document", name, "status")), (0, "Pending")
+		)
 
 	def test_email_upload_sets_no_link(self):
 		FakeStorage.outcome = StorageResult(external_id=None, program_code=None)

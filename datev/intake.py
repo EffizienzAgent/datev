@@ -65,7 +65,7 @@ def upsert_document(
 
 	replace_file(document, file_name, content)
 
-	if document.status == "Pending":
+	if document.status == "Pending" and frappe.db.get_value("DATEV Client", client, "enabled"):
 		frappe.enqueue("datev.documents.upload", name=document.name, enqueue_after_commit=True, queue="short")
 	return document.name
 
