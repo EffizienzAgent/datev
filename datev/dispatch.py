@@ -231,8 +231,17 @@ def hold(booking: str, held: bool = True) -> None:
 	elif doc.status != "Pending":
 		frappe.throw(_("Booking {0} cannot be held.").format(booking))
 
+	lines = siblings(doc)
+	for sibling in lines:
+		if sibling.status == "Batched" and sibling.batch:
+			if frappe.db.get_value(BATCH, sibling.batch, "status") != "Awaiting Approval":
+				frappe.throw(
+					_(
+						"Line {0} of this document is in batch {1}, which is no longer awaiting approval."
+					).format(sibling.line_key, sibling.batch)
+				)
 	batches = set()
-	for sibling in siblings(doc):
+	for sibling in lines:
 		if sibling.status in OPEN_BOOKING_STATUSES:
 			sibling.db_set("held", 1)
 		elif sibling.batch and frappe.db.get_value(BATCH, sibling.batch, "status") == "Awaiting Approval":
@@ -424,15 +433,32 @@ def reset_booking(booking: str, reason: str) -> None:
 def run() -> None:
 	now = now_datetime()
 	for client in frappe.get_all(CLIENT, filters={"enabled": 1}, pluck="name"):
-		if is_due(frappe.get_doc(CLIENT, client), now):
-			enqueue_client(client, after_commit=False)
+		try:
+			if is_due(frappe.get_doc(CLIENT, client), now):
+				enqueue_client(client, after_commit=False)
+		except Exception:
+			frappe.log_error(
+				title="DATEV booking collection failed", reference_doctype=CLIENT, reference_name=client
+			)
 	for batch in frappe.get_all(BATCH, filters={"status": "Approved"}, pluck="name", order_by="creation asc"):
-		enqueue_send(batch, after_commit=False)
+		try:
+			enqueue_send(batch, after_commit=False)
+		except Exception:
+			frappe.log_error(
+				title="DATEV batch dispatch failed", reference_doctype=BATCH, reference_name=batch
+			)
 
 
 def process_client(client: str) -> None:
-	batch = collect(client)
-	frappe.db.commit()
+	try:
+		batch = collect(client)
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		frappe.log_error(
+			title="DATEV booking collection failed", reference_doctype=CLIENT, reference_name=client
+		)
+		raise
 	if batch and frappe.db.get_value(BATCH, batch, "status") == "Approved":
 		send(batch)
 

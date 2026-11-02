@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:44+0000\n"
+"POT-Creation-Date: 2026-11-02 18:51+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -18,11 +18,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: datev/parties.py:181
+#: datev/parties.py:184
 msgid "A party account can only be resolved as imported or created."
 msgstr "Ein Personenkonto kann nur als importiert oder angelegt geklärt werden."
 
-#: datev/dispatch.py:415
+#: datev/parties.py:182
+msgid "A reason is required to mark a party account resolved."
+msgstr "Zum Markieren eines Personenkontos als geklärt ist eine Begründung erforderlich."
+
+#: datev/dispatch.py:424
 msgid "A reason is required to reset a booking."
 msgstr "Zum Zurücksetzen einer Buchung ist eine Begründung erforderlich."
 
@@ -426,7 +430,7 @@ msgstr "DATEV-Kontonummer"
 msgid "DATEV account {0} exists as {1}, but the party is {2}. Check the account and resolve it manually."
 msgstr "DATEV-Konto {0} existiert als {1}, der Geschäftspartner ist aber {2}. Prüfen Sie das Konto und klären Sie es manuell."
 
-#: datev/parties.py:242
+#: datev/parties.py:247
 #, python-brace-format
 msgid "DATEV account {0} is also claimed by {1}."
 msgstr "Das DATEV-Konto {0} wird auch von {1} beansprucht."
@@ -440,7 +444,7 @@ msgstr "DATEV Buchungsstapel {0}"
 msgid "DATEV debtor/creditor export"
 msgstr "DATEV Debitoren-/Kreditorenexport"
 
-#: datev/notify.py:184
+#: datev/notify.py:186
 #, python-brace-format
 msgid "DATEV file ready: {0}"
 msgstr "DATEV-Datei bereit: {0}"
@@ -495,7 +499,7 @@ msgstr "Debitor"
 msgid "Debtor Numbering"
 msgstr "Debitorennummerierung"
 
-#: datev/dispatch.py:305 datev/dispatch.py:329
+#: datev/dispatch.py:314 datev/dispatch.py:338
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr "Die Übergabe an DATEV ist unsicher. Prüfen Sie DATEV und klären Sie danach den Buchungsstapel."
 
@@ -612,7 +616,7 @@ msgstr "Der Belegtyp {0} ist für diesen Mandanten nicht definiert."
 msgid "Document {0} has no document link, which this client requires."
 msgstr "Beleg {0} hat keinen Beleglink, den dieser Mandant verlangt."
 
-#: datev/intake.py:135
+#: datev/intake.py:136
 #, python-brace-format
 msgid "Document {0} is discarded and takes no bookings."
 msgstr "Beleg {0} wurde verworfen und nimmt keine Buchungen an."
@@ -744,7 +748,7 @@ msgstr "Dateiname"
 msgid "File ready"
 msgstr "Datei bereit"
 
-#: datev/dispatch.py:365
+#: datev/dispatch.py:374
 msgid "Files are not delivered to DATEV directly. Mark the batch as not delivered to export it again."
 msgstr "Dateien werden nicht direkt an DATEV übermittelt. Markieren Sie den Buchungsstapel als nicht übermittelt, um ihn erneut zu exportieren."
 
@@ -902,6 +906,11 @@ msgstr "Zeilenschlüssel"
 msgid "Line key {0} already exists for this document."
 msgstr "Der Zeilenschlüssel {0} existiert für diesen Beleg bereits."
 
+#: datev/dispatch.py:240
+#, python-brace-format
+msgid "Line {0} of this document is in batch {1}, which is no longer awaiting approval."
+msgstr "Zeile {0} dieses Belegs liegt in Buchungsstapel {1}, der nicht mehr auf Freigabe wartet."
+
 #. Label of the mandate_section (Section Break) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:112
 msgid "Mandate"
@@ -923,7 +932,7 @@ msgid "Mark as uploaded"
 msgstr "Als hochgeladen markieren"
 
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:18
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:49
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:51
 msgid "Mark resolved"
 msgstr "Als geklärt markieren"
 
@@ -935,7 +944,7 @@ msgstr "Diesen Buchungsstapel als nicht übergeben markieren? Seine Buchungen we
 msgid "Marked as uploaded"
 msgstr "Als hochgeladen markiert"
 
-#: datev/documents.py:152
+#: datev/documents.py:229
 #, python-brace-format
 msgid "Marked as uploaded as {0}: {1}"
 msgstr "Als hochgeladen markiert mit {0}: {1}"
@@ -944,10 +953,10 @@ msgstr "Als hochgeladen markiert mit {0}: {1}"
 msgid "Marked resolved"
 msgstr "Als geklärt markiert"
 
-#: datev/parties.py:187
+#: datev/parties.py:190
 #, python-brace-format
-msgid "Marked resolved as {0} with DATEV account {1}."
-msgstr "Als geklärt markiert ({0}) mit DATEV-Konto {1}."
+msgid "Marked resolved as {0} with DATEV account {1}: {2}"
+msgstr "Als geklärt markiert ({0}) mit DATEV-Konto {1}: {2}"
 
 #. Label of the master_data_connector (Select) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:172
@@ -1045,11 +1054,11 @@ msgstr "Für diesen Mandanten ist keine EXTF-E-Mail-Adresse hinterlegt."
 msgid "No Link"
 msgstr "Ohne Beleglink"
 
-#: datev/dispatch.py:261
+#: datev/dispatch.py:270
 msgid "No bookings left to send."
 msgstr "Es sind keine Buchungen mehr zu senden."
 
-#: datev/api.py:146 datev/intake.py:94
+#: datev/api.py:146 datev/intake.py:95
 #, python-brace-format
 msgid "No document with source key {0}."
 msgstr "Kein Beleg mit dem Quellschlüssel {0}."
@@ -1075,19 +1084,19 @@ msgstr "Benachrichtigt am"
 msgid "Numbering by DATEV requires the DATEVconnect master data connector."
 msgstr "Die Nummernvergabe durch DATEV erfordert den Stammdaten-Konnektor DATEVconnect."
 
-#: datev/dispatch.py:358
+#: datev/dispatch.py:367
 msgid "Only batches that are still sending can be resolved."
 msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 
-#: datev/dispatch.py:392
+#: datev/dispatch.py:401
 msgid "Only exported EXTF batches can be confirmed as imported."
 msgstr "Nur exportierte EXTF-Buchungsstapel können als importiert bestätigt werden."
 
-#: datev/dispatch.py:405
+#: datev/dispatch.py:414
 msgid "Only exported batches of the EXTF e-mail connector can be sent again."
 msgstr "Nur exportierte Buchungsstapel des Konnektors EXTF per E-Mail können erneut gesendet werden."
 
-#: datev/parties.py:184
+#: datev/parties.py:187
 msgid "Only party accounts to clarify can be marked resolved."
 msgstr "Nur zu klärende Personenkonten können als geklärt markiert werden."
 
@@ -1095,11 +1104,11 @@ msgstr "Nur zu klärende Personenkonten können als geklärt markiert werden."
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr "Nur fehlerhafte oder zu klärende Personenkonten können erneut versucht werden."
 
-#: datev/documents.py:140
+#: datev/documents.py:213
 msgid "Only stuck documents can be marked as uploaded."
 msgstr "Nur blockierte Belege können als hochgeladen markiert werden."
 
-#: datev/dispatch.py:418
+#: datev/dispatch.py:427
 msgid "Only transferred, exported or failed bookings can be reset."
 msgstr "Nur übertragene, exportierte oder fehlgeschlagene Buchungen können zurückgesetzt werden."
 
@@ -1228,6 +1237,7 @@ msgstr "Programmkürzel"
 
 #: datev/datev/doctype/datev_booking/datev_booking.js:23
 #: datev/datev/doctype/datev_document/datev_document.js:23
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:39
 msgid "Reason"
 msgstr "Begründung"
 
@@ -1259,7 +1269,7 @@ msgstr "Beleglink erforderlich"
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: datev/dispatch.py:421
+#: datev/dispatch.py:430
 #, python-brace-format
 msgid "Reset from {0}: {1}"
 msgstr "Zurückgesetzt von {0}: {1}"
@@ -1348,7 +1358,7 @@ msgid "Saturday"
 msgstr "Samstag"
 
 #: datev/datev/doctype/datev_document/datev_document.js:31
-#: datev/datev/doctype/datev_party_account/datev_party_account.js:50
+#: datev/datev/doctype/datev_party_account/datev_party_account.js:52
 msgid "Save"
 msgstr "Speichern"
 
@@ -1388,7 +1398,7 @@ msgstr "Gesendet"
 msgid "Sent On"
 msgstr "Gesendet am"
 
-#: datev/parties.py:226
+#: datev/parties.py:231
 #, python-brace-format
 msgid "Several DATEV accounts match: {0}"
 msgstr "Mehrere DATEV-Konten passen: {0}"
@@ -1484,7 +1494,7 @@ msgstr "Steuersatz"
 msgid "Tax code"
 msgstr "Steuerkennzeichen"
 
-#: datev/intake.py:173
+#: datev/intake.py:174
 #, python-brace-format
 msgid "Tax code {0} has no row in the DATEV Client's tax keys. Add it; leave the BU key empty for automatic accounts."
 msgstr "Steuerkennzeichen {0} hat keine Zeile in den Steuerschlüsseln des DATEV-Mandanten. Ergänzen Sie sie; lassen Sie den BU-Schlüssel bei Automatikkonten leer."
@@ -1493,9 +1503,14 @@ msgstr "Steuerkennzeichen {0} hat keine Zeile in den Steuerschlüsseln des DATEV
 msgid "Tax rate"
 msgstr "Steuersatz"
 
-#: datev/documents.py:137
+#: datev/documents.py:210
 msgid "The DUo document ID and a reason are required."
 msgstr "Die Beleg-ID in DUo und eine Begründung sind erforderlich."
+
+#: datev/documents.py:217
+#, python-brace-format
+msgid "The DUo document ID {0} already belongs to another document."
+msgstr "Die Beleg-ID {0} in DUo gehört bereits zu einem anderen Beleg."
 
 #: datev/connectors/extf.py:102
 #, python-brace-format
@@ -1506,11 +1521,11 @@ msgstr "Die EXTF-Dateien des DATEV-Buchungsstapels {0} sind angehängt."
 msgid "The EXTF master data connector requires an EXTF export connector."
 msgstr "Der EXTF-Stammdaten-Konnektor erfordert einen EXTF-Export-Konnektor."
 
-#: datev/intake.py:97
+#: datev/intake.py:98
 msgid "The document is already in DATEV. Create a cancellation invoice instead."
 msgstr "Der Beleg ist bereits in DATEV. Erstellen Sie stattdessen eine Stornorechnung."
 
-#: datev/dispatch.py:322
+#: datev/dispatch.py:331
 msgid "The export connector returned no result."
 msgstr "Der Export-Konnektor hat kein Ergebnis zurückgegeben."
 
@@ -1523,7 +1538,7 @@ msgstr "Der Dateiinhalt ist kein gültiges Base64."
 msgid "The file is for consultant {0}, client {1}, account length {2}, but this DATEV Client is consultant {3}, client {4}, account length {5}."
 msgstr "Die Datei gehört zu Beraternummer {0}, Mandantennummer {1}, Sachkontenlänge {2}, dieser DATEV-Mandant hat aber Beraternummer {3}, Mandantennummer {4}, Sachkontenlänge {5}."
 
-#: datev/intake.py:34
+#: datev/intake.py:35
 #, python-brace-format
 msgid "The source key {0} already belongs to another client."
 msgstr "Der Quellschlüssel {0} gehört bereits zu einem anderen Mandanten."
@@ -1692,7 +1707,7 @@ msgstr "{0} muss eine Zahl sein."
 msgid "{0} must be an integer."
 msgstr "{0} muss eine ganze Zahl sein."
 
-#: datev/dispatch.py:326
+#: datev/dispatch.py:335
 #, python-brace-format
 msgid "{0} sent, {1} failed."
 msgstr "{0} gesendet, {1} fehlgeschlagen."

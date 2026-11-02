@@ -26,7 +26,7 @@ datev_master_data_connectors = {
 
 scheduler_events = {
 	"cron": {
-		"* * * * *": ["datev.documents.retry_due"],
+		"*/5 * * * *": ["datev.documents.retry_due"],
 		"0 * * * *": ["datev.dispatch.run", "datev.notify.check"],
 	},
 }

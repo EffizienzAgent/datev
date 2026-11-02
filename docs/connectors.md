@@ -17,7 +17,7 @@ Uploads to DATEV Unternehmen online (DUo) through the [Business OS](https://docs
 | ID Mode | `Send own ID` (the document GUID is sent, so the Beleglink is known before upload and a retry reuses it) or `Use returned ID` |
 | Credits, Credit Warning Threshold | Remaining credits and their time are stored from each response; a notification warns below the threshold once credits are known |
 
-Program code is `BEDI`. Every call carries `connectionId` and `quelle=frappe-datev`. Each upload costs one credit. A success response without JSON or without `id` is treated as an error that is not retried (document Stuck). In `Use returned ID` mode an upload that may have reached Business OS (timeout or server error) is not retried either, because a second upload would create a second document in DUo; check DUo, then retry by hand or mark the document as uploaded. In `Send own ID` mode such uploads are retried, and an answer with an ID other than the sent GUID makes the document Stuck. Uploads are spaced at least five seconds apart per client.
+Program code is `BEDI`. Every call carries `connectionId` and `quelle=frappe-datev`. Each upload costs one credit. A success response without JSON or without `id` is treated as an error that is not retried (document Stuck). In `Use returned ID` mode an upload that may have reached Business OS (timeout or server error) is not retried either, because a second upload would create a second document in DUo; check DUo, then retry by hand or mark the document as uploaded. In `Send own ID` mode such uploads are retried, and an answer with an ID other than the sent GUID makes the document Stuck. Uploads run in one background job per client, at least five seconds apart.
 
 ### E-mail to DUo
 

@@ -500,6 +500,17 @@ class TestDispatch(IntegrationTestCase):
 			[frappe.db.get_value("DATEV Booking", name, "held") for name in (first, second)], [0, 0]
 		)
 
+	def test_hold_rejects_document_in_sent_batch(self):
+		document = self.document()
+		sent = self.booking(document, "1")
+		batch = dispatch.collect(self.client_doc.name)
+		frappe.db.set_value("DATEV Batch", batch, "status", "Sending")
+		pending = self.booking(document, "2")
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.hold(pending)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", pending, "held"), 0)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", sent, "batch"), batch)
+
 	def test_post_only(self):
 		from datev import documents, parties
 		from datev.datev.doctype.datev_client.datev_client import DATEVClient
@@ -792,3 +803,45 @@ def only_own_client(client):
 		return real_get_all(doctype, *args, **kwargs)
 
 	return get_all
+
+
+class TestDispatchErrors(IntegrationTestCase):
+	def setUp(self):
+		for patcher in (patch("frappe.db.commit"), patch("frappe.db.rollback")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
+
+	def test_run_isolates_client_errors(self):
+		broken = make_client(dispatch_frequency="Daily")
+		healthy = make_client(dispatch_frequency="Daily")
+		real_is_due = dispatch.is_due
+
+		def is_due(client, now):
+			if client.name == broken.name:
+				raise RuntimeError("boom")
+			return real_is_due(client, now)
+
+		with (
+			patch("datev.dispatch.is_due", side_effect=is_due),
+			patch("frappe.enqueue") as enqueue,
+			patch("frappe.log_error") as log_error,
+		):
+			dispatch.run()
+		clients = [call.kwargs.get("client") for call in enqueue.call_args_list]
+		self.assertIn(healthy.name, clients)
+		self.assertNotIn(broken.name, clients)
+		self.assertIn(broken.name, [call.kwargs.get("reference_name") for call in log_error.call_args_list])
+
+	def test_process_client_logs_and_reraises(self):
+		client = make_client()
+		with (
+			patch("datev.dispatch.collect", side_effect=RuntimeError("boom")),
+			patch("frappe.log_error") as log_error,
+		):
+			with self.assertRaises(RuntimeError):
+				dispatch.process_client(client.name)
+		log_error.assert_called_once_with(
+			title="DATEV booking collection failed",
+			reference_doctype="DATEV Client",
+			reference_name=client.name,
+		)

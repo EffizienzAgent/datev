@@ -3,6 +3,7 @@ from frappe import _
 
 from datev.beleglink import new_guid
 from datev.document_types import DocumentTypeError, resolve
+from datev.documents import enqueue_upload
 from datev.events import log_event
 from datev.protect import internal
 
@@ -66,7 +67,7 @@ def upsert_document(
 	replace_file(document, file_name, content)
 
 	if document.status == "Pending" and frappe.db.get_value("DATEV Client", client, "enabled"):
-		frappe.enqueue("datev.documents.upload", name=document.name, enqueue_after_commit=True, queue="short")
+		enqueue_upload(document.name, frappe.get_doc("DATEV Client", client))
 	return document.name
 
 

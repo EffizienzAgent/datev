@@ -71,7 +71,7 @@ def status_counts(client: str, now) -> dict:
 			BATCH,
 			client=client,
 			status=("in", ("Failed", "Partially Sent")),
-			modified=(">=", add_to_date(now, days=-30)),
+			sent_on=(">=", add_to_date(now, days=-30)),
 		),
 		"unconfirmed_batches": count(BATCH, **unconfirmed),
 		"unconfirmed_overdue": count(
@@ -178,7 +178,9 @@ def notify_client(client, now) -> None:
 
 
 def file_ready(batch) -> None:
-	if frappe.db.exists("DATEV Event Log", {"reference_name": batch.name, "event": "file_ready"}):
+	if frappe.db.exists(
+		"DATEV Event Log", {"reference_doctype": BATCH, "reference_name": batch.name, "event": "file_ready"}
+	):
 		return
 	users = recipients(frappe.get_doc(CLIENT, batch.client))
 	alert(users, _("DATEV file ready: {0}").format(batch.name), document_type=BATCH, document_name=batch.name)

@@ -290,7 +290,9 @@ class TestPartyAccounts(IntegrationTestCase):
 
 	def test_mark_resolved_logs(self):
 		account = make_party_account(self.client, party_name="Offen", sync_status="To Clarify")
-		mark_resolved(account.name, 10160, "Imported")
+		with self.assertRaises(frappe.ValidationError):
+			mark_resolved(account.name, 10160, "Imported", " ")
+		mark_resolved(account.name, 10160, "Imported", "Checked with the tax office")
 		account.reload()
 		self.assertEqual(
 			(account.account_number, account.sync_status, account.message), (10160, "Imported", "")
@@ -300,21 +302,22 @@ class TestPartyAccounts(IntegrationTestCase):
 		)
 		self.assertEqual(len(log), 1)
 		self.assertIn("10160", log[0])
+		self.assertIn("Checked with the tax office", log[0])
 
 		created = make_party_account(self.client, party_name="Neu", sync_status="To Clarify")
-		mark_resolved(created.name, 10161, "Created")
+		mark_resolved(created.name, 10161, "Created", "New")
 		self.assertEqual(frappe.db.get_value("DATEV Party Account", created.name, "sync_status"), "Created")
 		with self.assertRaises(frappe.ValidationError):
-			mark_resolved(created.name, 10162, "Imported")
+			mark_resolved(created.name, 10162, "Imported", "again")
 		other = make_party_account(self.client, party_name="Andere", sync_status="To Clarify")
 		with self.assertRaises(frappe.ValidationError):
-			mark_resolved(other.name, 10163, "New")
+			mark_resolved(other.name, 10163, "New", "reason")
 
 	def test_mark_resolved_manager_only(self):
 		account = make_party_account(self.client, sync_status="To Clarify")
 		with patch("frappe.only_for", side_effect=frappe.PermissionError) as only_for:
 			with self.assertRaises(frappe.PermissionError):
-				mark_resolved(account.name, 10170, "Imported")
+				mark_resolved(account.name, 10170, "Imported", "reason")
 		only_for.assert_called_once_with("DATEV Manager")
 		self.assertEqual(
 			frappe.db.get_value("DATEV Party Account", account.name, "sync_status"), "To Clarify"

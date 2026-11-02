@@ -36,13 +36,15 @@ frappe.ui.form.on("DATEV Party Account", {
 						],
 						default: "Imported",
 					},
+					{ fieldname: "reason", fieldtype: "Small Text", label: __("Reason"), reqd: 1 },
 				],
-				({ account_number, status }) => {
+				({ account_number, status, reason }) => {
 					frappe
 						.call("datev.parties.mark_resolved", {
 							party_account: frm.doc.name,
 							account_number,
 							status,
+							reason,
 						})
 						.then(() => frm.reload_doc());
 				},

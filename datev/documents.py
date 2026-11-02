@@ -1,3 +1,5 @@
+import time
+
 import frappe
 from frappe import _
 from frappe.utils import add_to_date, now_datetime
@@ -12,7 +14,61 @@ from datev.protect import internal
 BACKOFF_MINUTES = (5, 30, 120, 720)
 MAX_ATTEMPTS = 5
 UNSCHEDULED_GRACE_MINUTES = 10
+DRAIN_SECONDS = 50 * 60
+DRAIN_TIMEOUT = 3600
 DOCUMENT = "DATEV Document"
+
+
+def enqueue_upload(name: str, client) -> None:
+	if not registry.get_storage(client).min_interval:
+		frappe.enqueue("datev.documents.upload", name=name, enqueue_after_commit=True, queue="short")
+		return
+	scheduled = frappe.flags.setdefault("datev_drains", set())
+	if client.name not in scheduled:
+		scheduled.add(client.name)
+		enqueue_drain(client.name, after_commit=True)
+
+
+def enqueue_drain(client: str, after_commit: bool = False) -> None:
+	extra = {"enqueue_after_commit": True} if after_commit else {}
+	frappe.enqueue(
+		"datev.documents.drain",
+		queue="long",
+		timeout=DRAIN_TIMEOUT,
+		job_id=f"datev-upload-{client}",
+		deduplicate=True,
+		**extra,
+		client=client,
+	)
+
+
+def due_filters(now) -> list:
+	grace = add_to_date(now, minutes=-UNSCHEDULED_GRACE_MINUTES)
+	return [
+		[["status", "=", "Pending"], ["next_attempt", "is", "set"], ["next_attempt", "<=", now]],
+		{"status": "Pending", "next_attempt": ["is", "not set"], "creation": ["<=", grace]},
+	]
+
+
+def drain(client: str) -> None:
+	client_doc = frappe.get_doc("DATEV Client", client)
+	if not client_doc.enabled:
+		return
+	interval = registry.get_storage(client_doc).min_interval
+	started = time.monotonic()
+	last = None
+	tried = set()
+	while time.monotonic() - started < DRAIN_SECONDS:
+		name = next_due(client, tried)
+		if not name:
+			return
+		tried.add(name)
+		if last is not None:
+			wait = interval - (time.monotonic() - last)
+			if wait > 0:
+				time.sleep(wait)
+		upload_isolated(name)
+		last = time.monotonic()
 
 
 def upload(name: str) -> None:
@@ -54,12 +110,10 @@ def take_slot(client: str, interval: int) -> bool:
 
 
 def update_pending(name: str, values: dict) -> bool:
-	table = frappe.qb.DocType(DOCUMENT)
-	query = frappe.qb.update(table).set(table.modified, now_datetime())
-	for field, value in values.items():
-		query = query.set(table[field], value)
-	query.where((table.name == name) & (table.status == "Pending")).run()
-	return frappe.db._cursor.rowcount > 0
+	if frappe.db.get_value(DOCUMENT, name, "status", for_update=True) != "Pending":
+		return False
+	frappe.db.set_value(DOCUMENT, name, values)
+	return True
 
 
 def handle_failure(document, error: ConnectorError) -> None:
@@ -75,32 +129,51 @@ def handle_failure(document, error: ConnectorError) -> None:
 		log_event(DOCUMENT, document.name, event, str(error), error.response)
 
 
-def retry_due() -> None:
+def next_due(client: str, tried: set) -> str | None:
 	now = now_datetime()
-	grace = add_to_date(now, minutes=-UNSCHEDULED_GRACE_MINUTES)
-	due = frappe.get_all(
+	for row in frappe.get_all(
 		DOCUMENT,
-		filters=[
-			["status", "=", "Pending"],
-			["next_attempt", "is", "set"],
-			["next_attempt", "<=", now],
-		],
-		pluck="name",
-	) + frappe.get_all(
-		DOCUMENT,
-		filters={"status": "Pending", "next_attempt": ["is", "not set"], "creation": ["<=", grace]},
-		pluck="name",
-	)
-	for name in due:
+		filters={"client": client, "status": "Pending"},
+		fields=["name", "next_attempt"],
+		order_by="creation asc",
+	):
+		if row.name not in tried and (not row.next_attempt or row.next_attempt <= now):
+			return row.name
+	return None
+
+
+def retry_due() -> None:
+	by_client = {}
+	for filters in due_filters(now_datetime()):
+		for row in frappe.get_all(
+			DOCUMENT, filters=filters, fields=["name", "client"], order_by="creation asc"
+		):
+			by_client.setdefault(row.client, []).append(row.name)
+	for client, names in by_client.items():
 		try:
-			upload(name)
-		except Exception as error:
-			frappe.db.rollback()
+			throttled = registry.get_storage(frappe.get_doc("DATEV Client", client)).min_interval
+		except Exception:
 			frappe.log_error(
-				title="DATEV document upload failed", reference_doctype=DOCUMENT, reference_name=name
+				title="DATEV document upload failed", reference_doctype="DATEV Client", reference_name=client
 			)
-			mark_stuck(name, str(error))
-		frappe.db.commit()
+			continue
+		if throttled:
+			enqueue_drain(client)
+			continue
+		for name in names:
+			upload_isolated(name)
+
+
+def upload_isolated(name: str) -> None:
+	try:
+		upload(name)
+	except Exception as error:
+		frappe.db.rollback()
+		frappe.log_error(
+			title="DATEV document upload failed", reference_doctype=DOCUMENT, reference_name=name
+		)
+		mark_stuck(name, str(error))
+	frappe.db.commit()
 
 
 def mark_stuck(name: str, message: str) -> None:
@@ -126,7 +199,7 @@ def retry(name: str) -> None:
 	)
 	internal(document).save(ignore_permissions=True)
 	log_event(DOCUMENT, name, "retried")
-	frappe.enqueue("datev.documents.upload", name=name, queue="short", enqueue_after_commit=True)
+	enqueue_upload(name, client)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -138,6 +211,10 @@ def mark_uploaded(name: str, external_id: str, reason: str) -> None:
 	document = frappe.get_doc(DOCUMENT, name, for_update=True)
 	if document.status != "Stuck":
 		frappe.throw(_("Only stuck documents can be marked as uploaded."))
+	if frappe.db.exists(
+		DOCUMENT, {"client": document.client, "external_id": external_id, "name": ("!=", name)}
+	):
+		frappe.throw(_("The DUo document ID {0} already belongs to another document.").format(external_id))
 	document.update(
 		{
 			"external_id": external_id,

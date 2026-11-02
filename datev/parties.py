@@ -175,8 +175,11 @@ def link_existing(party_account, remote: RemoteParty) -> bool:
 
 
 @frappe.whitelist(methods=["POST"])
-def mark_resolved(party_account: str, account_number: int, status: str) -> None:
+def mark_resolved(party_account: str, account_number: int, status: str, reason: str) -> None:
 	frappe.only_for("DATEV Manager")
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A reason is required to mark a party account resolved."))
 	if status not in SETTLED:
 		frappe.throw(_("A party account can only be resolved as imported or created."))
 	doc = frappe.get_doc(PARTY, party_account, for_update=True)
@@ -184,7 +187,9 @@ def mark_resolved(party_account: str, account_number: int, status: str) -> None:
 		frappe.throw(_("Only party accounts to clarify can be marked resolved."))
 	doc.update({"account_number": int(account_number), "sync_status": status, "message": ""})
 	doc.save(ignore_permissions=True)
-	message = _("Marked resolved as {0} with DATEV account {1}.").format(_(status), doc.account_number)
+	message = _("Marked resolved as {0} with DATEV account {1}: {2}").format(
+		_(status), doc.account_number, reason
+	)
 	log_event(PARTY, doc.name, "resolved", message)
 
 
