@@ -84,15 +84,21 @@ class DATEVClient(Document):
 	@frappe.whitelist()
 	def business_os_connections(self) -> list[dict]:
 		frappe.only_for("DATEV Manager")
-		api = BusinessOS(self.get_password("bos_api_key"))
-		rows = [
-			{"id": c["id"], "bezeichnung": c.get("bezeichnung"), "status": c.get("status")}
-			for c in api.connections()
-		]
-		for company in api.companies():
-			if (company.get("consultant_number"), company.get("client_number")) == (
-				self.consultant_number,
-				self.client_number,
-			):
-				rows.append({"id": company["id"], "bezeichnung": company.get("name"), "status": None})
+		key = self.get_password("bos_api_key")
+		rows = []
+		for connection in BusinessOS(key).connections():
+			companies = BusinessOS(key, connection["id"]).companies()
+			suggested = any(
+				(c.get("consultant_number"), c.get("client_number"))
+				== (self.consultant_number, self.client_number)
+				for c in companies
+			)
+			rows.append(
+				{
+					"id": connection["id"],
+					"bezeichnung": connection.get("bezeichnung"),
+					"status": connection.get("status"),
+					"suggested": suggested,
+				}
+			)
 		return rows

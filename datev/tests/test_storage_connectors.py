@@ -104,27 +104,31 @@ class TestStorageConnectors(IntegrationTestCase):
 		)
 
 	@patch("datev.http.requests.request")
-	def test_business_os_connections_includes_matching_company(self, request):
+	def test_business_os_connections_flags_matching_connection(self, request):
+		matching = {"consultant_number": 29098, "client_number": 55003, "id": "29098-55003"}
+		other = {"consultant_number": 1, "client_number": 2, "id": "1-2"}
 		request.side_effect = [
-			fake_response({"connections": [{"id": "c1", "bezeichnung": "Main", "status": "active"}]}),
 			fake_response(
 				{
-					"data": [
-						{"id": "1-2", "name": "Other", "consultant_number": 1, "client_number": 2},
-						{
-							"id": "29098-55003",
-							"name": "Match",
-							"consultant_number": 29098,
-							"client_number": 55003,
-						},
+					"connections": [
+						{"id": "c1", "bezeichnung": "First", "status": "connected"},
+						{"id": "c2", "bezeichnung": "Second", "status": "pending"},
 					]
 				}
 			),
+			fake_response({"data": [other]}),
+			fake_response({"data": [other, matching]}),
 		]
 		client = make_client()
 
 		rows = client.business_os_connections()
 
-		self.assertEqual(rows[0], {"id": "c1", "bezeichnung": "Main", "status": "active"})
-		self.assertEqual(len(rows), 2)
-		self.assertEqual(rows[1]["id"], "29098-55003")
+		self.assertEqual(
+			rows,
+			[
+				{"id": "c1", "bezeichnung": "First", "status": "connected", "suggested": False},
+				{"id": "c2", "bezeichnung": "Second", "status": "pending", "suggested": True},
+			],
+		)
+		company_calls = [c for c in request.call_args_list if c.args[1].endswith("/v2/datev/companies")]
+		self.assertEqual([c.kwargs["params"]["connectionId"] for c in company_calls], ["c1", "c2"])
