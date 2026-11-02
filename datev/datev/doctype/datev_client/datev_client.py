@@ -76,7 +76,7 @@ class DATEVClient(Document):
 				frappe.throw(_("Row {0}: {1} {2} is listed more than once.").format(row.idx, label, value))
 			seen.add(value)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def refresh_document_types(self) -> int:
 		frappe.only_for("DATEV Manager")
 		types = get_storage(self).document_types()
@@ -111,12 +111,12 @@ class DATEVClient(Document):
 			)
 		return rows
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def import_parties(self) -> dict:
 		frappe.only_for("DATEV Manager")
 		return import_existing(self.name)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def import_parties_from_file(self, file_url: str) -> dict:
 		frappe.only_for("DATEV Manager")
 		file = frappe.get_doc("File", {"file_url": file_url})

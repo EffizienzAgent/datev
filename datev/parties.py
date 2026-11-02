@@ -129,7 +129,7 @@ def record_import(client: str, remote: list[RemoteParty]) -> None:
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def retry_party(party_account: str) -> str:
 	frappe.only_for("DATEV Manager")
 	doc = frappe.get_doc(PARTY, party_account, for_update=True)

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:30+0000\n"
+"POT-Creation-Date: 2026-11-02 18:33+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: datev/dispatch.py:324
+#: datev/dispatch.py:379
 msgid "A reason is required to reset a booking."
 msgstr "Zum Zurücksetzen einer Buchung ist eine Begründung erforderlich."
 
@@ -139,11 +139,6 @@ msgstr "Basis-URL"
 msgid "Batch"
 msgstr "Buchungsstapel"
 
-#: datev/datev/doctype/datev_client/datev_client.js:31
-#, python-brace-format
-msgid "Batch {0} created."
-msgstr "Buchungsstapel {0} wurde erstellt."
-
 #: datev/notify.py:119
 #, python-brace-format
 msgid "Batch {0} of {1} has been sending for over an hour. Check DATEV and resolve it."
@@ -159,7 +154,7 @@ msgstr "Buchungsstapel {0} von {1} wartet auf Freigabe"
 msgid "Batched"
 msgstr "Im Stapel"
 
-#: datev/dispatch.py:191
+#: datev/dispatch.py:221 datev/dispatch.py:230
 #, python-brace-format
 msgid "Booking {0} cannot be held."
 msgstr "Buchung {0} kann nicht zurückgehalten werden."
@@ -179,7 +174,7 @@ msgstr "Buchung {0} hat kein Gegenkonto."
 msgid "Booking {0} has no party account number."
 msgstr "Buchung {0} hat keine Personenkontonummer."
 
-#: datev/dispatch.py:193
+#: datev/dispatch.py:228
 #, python-brace-format
 msgid "Booking {0} is in a batch that is no longer awaiting approval."
 msgstr "Buchung {0} liegt in einem Buchungsstapel, der nicht mehr auf Freigabe wartet."
@@ -234,7 +229,7 @@ msgstr "Unternehmen"
 msgid "Company in the source system"
 msgstr "Unternehmen im Quellsystem"
 
-#: datev/datev/doctype/datev_client/datev_client.js:80
+#: datev/datev/doctype/datev_client/datev_client.js:78
 msgid "Connection"
 msgstr "Verbindung"
 
@@ -418,7 +413,7 @@ msgstr "Das DATEV-Konto {0} wird auch von {1} beansprucht."
 msgid "DATEV booking batch {0}"
 msgstr "DATEV Buchungsstapel {0}"
 
-#: datev/datev/doctype/datev_client/datev_client.js:45
+#: datev/datev/doctype/datev_client/datev_client.js:43
 msgid "DATEV debtor/creditor export"
 msgstr "DATEV Debitoren-/Kreditorenexport"
 
@@ -472,7 +467,7 @@ msgstr "Debitor"
 msgid "Debtor Numbering"
 msgstr "Debitorennummerierung"
 
-#: datev/dispatch.py:248 datev/dispatch.py:272
+#: datev/dispatch.py:303 datev/dispatch.py:327
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr "Die Übergabe an DATEV ist unsicher. Prüfen Sie DATEV und klären Sie danach den Buchungsstapel."
 
@@ -517,6 +512,10 @@ msgstr "Der Versandtag im Monat muss zwischen 1 und 28 liegen."
 #, python-brace-format
 msgid "Dispatch for {0} is overdue"
 msgstr "Der Versand für {0} ist überfällig"
+
+#: datev/datev/doctype/datev_client/datev_client.js:30
+msgid "Dispatch started in the background. Check the batches in a moment."
+msgstr "Übertragung im Hintergrund gestartet. Prüfen Sie die Buchungsstapel in Kürze."
 
 #. Label of the document (Link) field in DocType 'DATEV Booking'
 #: datev/datev/doctype/datev_booking/datev_booking.json:61
@@ -571,7 +570,7 @@ msgstr "Belegtypen"
 msgid "Document type {0} is not defined for this client."
 msgstr "Der Belegtyp {0} ist für diesen Mandanten nicht definiert."
 
-#: datev/dispatch.py:47
+#: datev/dispatch.py:48
 #, python-brace-format
 msgid "Document {0} has no document link, which this client requires."
 msgstr "Beleg {0} hat keinen Beleglink, den dieser Mandant verlangt."
@@ -581,7 +580,7 @@ msgstr "Beleg {0} hat keinen Beleglink, den dieser Mandant verlangt."
 msgid "Document {0} is discarded and takes no bookings."
 msgstr "Beleg {0} wurde verworfen und nimmt keine Buchungen an."
 
-#: datev/dispatch.py:45
+#: datev/dispatch.py:46
 #, python-brace-format
 msgid "Document {0} is not in DATEV yet (status {1})."
 msgstr "Beleg {0} ist noch nicht in DATEV (Status {1})."
@@ -846,7 +845,7 @@ msgstr "Diesen Buchungsstapel als nicht übergeben markieren? Seine Buchungen we
 msgid "Master Data Connector"
 msgstr "Stammdaten-Konnektor"
 
-#: datev/datev/doctype/datev_client/datev_client.js:49
+#: datev/datev/doctype/datev_client/datev_client.js:47
 msgid "Match"
 msgstr "Abgleichen"
 
@@ -857,7 +856,7 @@ msgid "Match Creditors By Number"
 msgstr "Kreditoren nach Nummer abgleichen"
 
 #: datev/datev/doctype/datev_client/datev_client.js:19
-#: datev/datev/doctype/datev_client/datev_client.js:67
+#: datev/datev/doctype/datev_client/datev_client.js:65
 msgid "Match DATEV accounts"
 msgstr "DATEV-Konten abgleichen"
 
@@ -871,7 +870,7 @@ msgid "Match Debtors By Number"
 msgstr "Debitoren nach Nummer abgleichen"
 
 #: datev/datev/doctype/datev_client/datev_client.js:23
-#: datev/datev/doctype/datev_client/datev_client.js:40
+#: datev/datev/doctype/datev_client/datev_client.js:38
 msgid "Match from file"
 msgstr "Aus Datei abgleichen"
 
@@ -888,7 +887,7 @@ msgstr "Aus Datei abgleichen"
 msgid "Message"
 msgstr "Meldung"
 
-#: datev/dispatch.py:36
+#: datev/dispatch.py:37
 #, python-brace-format
 msgid "Missing fields: {0}"
 msgstr "Fehlende Felder: {0}"
@@ -933,11 +932,7 @@ msgstr "Für diesen Mandanten ist keine EXTF-E-Mail-Adresse hinterlegt."
 msgid "No Link"
 msgstr "Ohne Beleglink"
 
-#: datev/datev/doctype/datev_client/datev_client.js:32
-msgid "No bookings are ready to send."
-msgstr "Es sind keine Buchungen versandbereit."
-
-#: datev/dispatch.py:204
+#: datev/dispatch.py:259
 msgid "No bookings left to send."
 msgstr "Es sind keine Buchungen mehr zu senden."
 
@@ -967,7 +962,7 @@ msgstr "Benachrichtigt am"
 msgid "Numbering by DATEV requires the DATEVconnect master data connector."
 msgstr "Die Nummernvergabe durch DATEV erfordert den Stammdaten-Konnektor DATEVconnect."
 
-#: datev/dispatch.py:299
+#: datev/dispatch.py:354
 msgid "Only batches that are still sending can be resolved."
 msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 
@@ -975,7 +970,7 @@ msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 msgid "Only party accounts with an error or to clarify can be retried."
 msgstr "Nur fehlerhafte oder zu klärende Personenkonten können erneut versucht werden."
 
-#: datev/dispatch.py:327
+#: datev/dispatch.py:382
 msgid "Only transferred, exported or failed bookings can be reset."
 msgstr "Nur übertragene, exportierte oder fehlgeschlagene Buchungen können zurückgesetzt werden."
 
@@ -1052,7 +1047,7 @@ msgstr "Personenkonto {0} hat keine Kontonummer."
 msgid "Party account {0} has no preferred number from the source system."
 msgstr "Personenkonto {0} hat keine Wunschnummer aus dem Quellsystem."
 
-#: datev/dispatch.py:51
+#: datev/dispatch.py:52
 #, python-brace-format
 msgid "Party account {0} is not ready: {1}"
 msgstr "Personenkonto {0} ist nicht bereit: {1}"
@@ -1079,7 +1074,7 @@ msgid "Pending"
 msgstr "Ausstehend"
 
 #: datev/datev/doctype/datev_client/datev_client.js:15
-#: datev/datev/doctype/datev_client/datev_client.js:75
+#: datev/datev/doctype/datev_client/datev_client.js:73
 msgid "Pick Business OS connection"
 msgstr "Business-OS-Verbindung auswählen"
 
@@ -1134,7 +1129,7 @@ msgstr "Beleglink erforderlich"
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: datev/dispatch.py:330
+#: datev/dispatch.py:385
 #, python-brace-format
 msgid "Reset from {0}: {1}"
 msgstr "Zurückgesetzt von {0}: {1}"
@@ -1202,7 +1197,7 @@ msgstr "Samstag"
 msgid "Save"
 msgstr "Speichern"
 
-#: datev/datev/doctype/datev_client/datev_client.js:89
+#: datev/datev/doctype/datev_client/datev_client.js:87
 msgid "Select"
 msgstr "Auswählen"
 
@@ -1352,7 +1347,7 @@ msgstr "Der EXTF-Stammdaten-Konnektor erfordert einen EXTF-Export-Konnektor."
 msgid "The document is already in DATEV. Create a cancellation invoice instead."
 msgstr "Der Beleg ist bereits in DATEV. Erstellen Sie stattdessen eine Stornorechnung."
 
-#: datev/dispatch.py:265
+#: datev/dispatch.py:320
 msgid "The export connector returned no result."
 msgstr "Der Export-Konnektor hat kein Ergebnis zurückgegeben."
 
@@ -1449,6 +1444,11 @@ msgstr "USt-IdNr."
 msgid "Verify TLS Certificate"
 msgstr "TLS-Zertifikat prüfen"
 
+#: datev/dispatch.py:155
+#, python-brace-format
+msgid "Waiting for line {0} of this document"
+msgstr "Wartet auf Zeile {0} dieses Belegs"
+
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:311
 msgid "Wednesday"
@@ -1471,7 +1471,7 @@ msgstr "Zeitpunkt des letzten Abgleichs der DATEV-Konten. EXTF-Mandanten prüfen
 msgid "Yes"
 msgstr "Ja"
 
-#: datev/dispatch.py:175
+#: datev/dispatch.py:211
 msgid "You are not allowed to approve batches of this client."
 msgstr "Sie dürfen Buchungsstapel dieses Mandanten nicht freigeben."
 
@@ -1490,7 +1490,7 @@ msgstr "Buchungen vom Typ {0} benötigen ein Personenkonto vom Typ {1}."
 msgid "{0} document types loaded."
 msgstr "{0} Belegtypen geladen."
 
-#: datev/datev/doctype/datev_client/datev_client.js:62
+#: datev/datev/doctype/datev_client/datev_client.js:60
 #, python-brace-format
 msgid "{0} imported, {1} to clarify, {2} unmatched."
 msgstr "{0} importiert, {1} zu klären, {2} ohne Treffer."
@@ -1510,7 +1510,7 @@ msgstr "{0} muss eine Zahl sein."
 msgid "{0} must be an integer."
 msgstr "{0} muss eine ganze Zahl sein."
 
-#: datev/dispatch.py:269
+#: datev/dispatch.py:324
 #, python-brace-format
 msgid "{0} sent, {1} failed."
 msgstr "{0} gesendet, {1} fehlgeschlagen."

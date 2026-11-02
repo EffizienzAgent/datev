@@ -86,7 +86,7 @@ def mark_stuck(name: str, message: str) -> None:
 	log_event(DOCUMENT, name, "upload_failed", message)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def retry(name: str) -> None:
 	frappe.only_for(["DATEV User", "DATEV Manager"])
 	if frappe.db.get_value(DOCUMENT, name, "status") != "Stuck":

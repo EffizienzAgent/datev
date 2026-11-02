@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import ClassVar
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 import requests
@@ -218,7 +218,7 @@ class TestDispatch(IntegrationTestCase):
 
 		dispatch.approve(batch)
 		self.enqueue.assert_called_once_with(
-			"datev.dispatch.send", queue="long", enqueue_after_commit=True, batch=batch
+			"datev.dispatch.send", **send_job(batch), enqueue_after_commit=True, batch=batch
 		)
 		self.assertEqual(FakeExport.calls, [])
 		dispatch.send(batch)
@@ -227,13 +227,31 @@ class TestDispatch(IntegrationTestCase):
 		self.assertTrue(approved.approved_on)
 		self.assertEqual(FakeExport.calls, [[ready]])
 
-	def test_collect_without_approval_sends_on_run(self):
+	def test_run_enqueues_per_client(self):
 		booking = self.booking()
-		with (
-			patch("frappe.get_all", side_effect=only_own_client(self.client_doc.name)),
-			patch("frappe.db.rollback"),
-		):
+		self.client_doc.db_set("approval_required", 1)
+		approved = dispatch.collect(self.client_doc.name)
+		frappe.db.set_value("DATEV Batch", approved, "status", "Approved")
+		self.client_doc.db_set("last_dispatch_on", None)
+		with patch("frappe.get_all", side_effect=only_own_client(self.client_doc.name)):
 			dispatch.run()
+		self.assertEqual(FakeExport.calls, [])
+		self.assertEqual(self.status(booking), "Batched")
+		self.assertEqual(
+			self.enqueue.call_args_list,
+			[
+				call(
+					"datev.dispatch.process_client",
+					**client_job(self.client_doc.name),
+					client=self.client_doc.name,
+				),
+				call("datev.dispatch.send", **send_job(approved), batch=approved),
+			],
+		)
+
+	def test_process_client_collects_and_sends(self):
+		booking = self.booking()
+		dispatch.process_client(self.client_doc.name)
 
 		batch = frappe.db.get_value("DATEV Booking", booking, "batch")
 		self.assertEqual(self.status(booking), "Exported")
@@ -245,8 +263,7 @@ class TestDispatch(IntegrationTestCase):
 		)
 		self.assertTrue(frappe.db.exists("DATEV Event Log", {"reference_name": batch, "event": "sent"}))
 
-		with patch("frappe.get_all", side_effect=only_own_client(self.client_doc.name)):
-			dispatch.run()
+		dispatch.process_client(self.client_doc.name)
 		self.assertEqual(len(FakeExport.calls), 1)
 
 	def test_is_due_weekly_and_monthly(self):
@@ -421,16 +438,86 @@ class TestDispatch(IntegrationTestCase):
 		dispatch.send(batch)
 		self.assertEqual(len(FakeExport.calls), 1)
 
-	def test_send_now_ignores_schedule(self):
+	def test_send_now_enqueues(self):
 		self.client_doc.db_set({"dispatch_frequency": "Monthly", "last_dispatch_on": frappe.utils.now()})
 		booking = self.booking()
-		batch = dispatch.send_now(self.client_doc.name)
-		self.assertEqual(self.status(booking), "Batched")
+		dispatch.send_now(self.client_doc.name)
+		self.assertEqual(self.status(booking), "Pending")
+		self.assertEqual(FakeExport.calls, [])
 		self.enqueue.assert_called_once_with(
-			"datev.dispatch.send", queue="long", enqueue_after_commit=True, batch=batch
+			"datev.dispatch.process_client",
+			**client_job(self.client_doc.name),
+			enqueue_after_commit=True,
+			client=self.client_doc.name,
 		)
-		dispatch.send(batch)
+		dispatch.process_client(self.client_doc.name)
 		self.assertEqual(self.status(booking), "Exported")
+
+	def test_document_all_or_nothing(self):
+		blocked = make_party_account(self.client_doc, sync_status="To Clarify")
+		document = self.document()
+		ready = self.booking(document, "1")
+		stuck = self.booking(document, "2", party_account=blocked.name)
+		other = self.booking()
+
+		batch = dispatch.collect(self.client_doc.name)
+
+		self.assertEqual(frappe.db.get_value("DATEV Booking", other, "batch"), batch)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", stuck, ["status", "batch"]), ("Stuck", None))
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", ready, ["status", "batch", "message"]),
+			("Pending", None, "Waiting for line 2 of this document"),
+		)
+
+	def test_document_waits_for_held_line(self):
+		document = self.document()
+		held = self.booking(document, "1")
+		dispatch.hold(held)
+		waiting = self.booking(document, "2")
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", waiting, ["status", "message"]),
+			("Pending", "Waiting for line 1 of this document"),
+		)
+
+	def test_hold_holds_whole_document(self):
+		self.client_doc.db_set("approval_required", 1)
+		document = self.document()
+		first = self.booking(document, "1")
+		second = self.booking(document, "2")
+		other = self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+
+		dispatch.hold(first)
+		for name in (first, second):
+			self.assertEqual(
+				frappe.db.get_value("DATEV Booking", name, ["status", "held", "batch"]), ("Pending", 1, None)
+			)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", other, "batch"), batch)
+
+		dispatch.hold(second, held=False)
+		self.assertEqual(
+			[frappe.db.get_value("DATEV Booking", name, "held") for name in (first, second)], [0, 0]
+		)
+
+	def test_post_only(self):
+		from datev import documents, parties
+		from datev.datev.doctype.datev_client.datev_client import DATEVClient
+
+		for function in (
+			dispatch.send_now,
+			dispatch.approve,
+			dispatch.hold,
+			dispatch.resolve_batch,
+			dispatch.reset_booking,
+			documents.retry,
+			parties.retry_party,
+			DATEVClient.import_parties,
+			DATEVClient.import_parties_from_file,
+			DATEVClient.refresh_document_types,
+		):
+			with self.subTest(function=function.__qualname__):
+				self.assertEqual(frappe.allowed_http_methods_for_whitelisted_func[function], ["POST"])
 
 	def test_approve_requires_permission(self):
 		self.client_doc.db_set({"approval_required": 1, "responsible_user": "approver@example.com"})
@@ -676,6 +763,19 @@ class TestDATEVconnectUncertainGroup(IntegrationTestCase):
 			self.states(), [("Transferred", self.batch), ("Transferred", self.batch), ("Failed", None)]
 		)
 		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Partially Sent")
+
+
+def client_job(client):
+	return {
+		"queue": "long",
+		"timeout": 3600,
+		"job_id": f"datev-client-{client}",
+		"deduplicate": True,
+	}
+
+
+def send_job(batch):
+	return {"queue": "long", "timeout": 3600, "job_id": f"datev-send-{batch}", "deduplicate": True}
 
 
 def only_own_client(client):
