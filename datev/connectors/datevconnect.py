@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, today
 
-from datev.clients.datevconnect import DATEVconnect, DATEVconnectError
+from datev.clients.datevconnect import DATEVconnect, DATEVconnectError, unexpected
 from datev.connectors.base import (
 	ConnectorError,
 	ExportConnector,
@@ -229,12 +229,14 @@ class DATEVconnectMasterData(DATEVconnectMixin, MasterDataConnector):
 		client_id = self.client_id(api)
 		fiscal_year = self.read_fiscal_year(api, client_id)
 		factor = technical_factor(self.client)
-		return [
-			remote_party(kind, row, factor)
-			for kind, path in PARTY_KINDS.items()
-			for row in api.parties(client_id, fiscal_year, path) or []
-			if row.get("account_number")
-		]
+		result = []
+		for kind, path in PARTY_KINDS.items():
+			rows = api.parties(client_id, fiscal_year, path) or []
+			try:
+				result += [remote_party(kind, row, factor) for row in rows if row.get("account_number")]
+			except AttributeError, KeyError, TypeError, ValueError:
+				raise unexpected(rows) from None
+		return result
 
 	def next_number(self, kind: str) -> int:
 		api = self.api()
@@ -253,7 +255,7 @@ class DATEVconnectMasterData(DATEVconnectMixin, MasterDataConnector):
 		payload = party_payload(party_account, technical_factor(self.client))
 		for fiscal_year in years:
 			response = api.put_party(client_id, fiscal_year, PARTY_KINDS[party_account.kind], [payload])
-			failed = (response or {}).get("failed") or []
+			failed = (response.get("failed") if isinstance(response, dict) else None) or []
 			if failed:
 				message = messages(failed[0]) or _("Rejected by DATEVconnect.")
 				raise ConnectorError(_("Fiscal year {0}: {1}").format(fiscal_year, message))

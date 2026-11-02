@@ -351,6 +351,16 @@ class TestDATEVconnectMasterData(IntegrationTestCase):
 			],
 		)
 
+	def test_fetch_parties_rejects_malformed_rows(self):
+		for rows in (["x"], [{"account_number": "abc"}]):
+			with (
+				self.subTest(rows=rows),
+				patch(f"{API}.parties", return_value=rows),
+				patch(f"{API}.fiscal_years", return_value=[{"id": "20270101"}]),
+			):
+				with self.assertRaises(DATEVconnectError):
+					DATEVconnectMasterData(self.client).fetch_parties()
+
 	def test_next_number(self):
 		with (
 			patch(f"{API}.next_available", return_value=100020000) as mocked,

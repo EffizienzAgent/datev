@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:34+0000\n"
+"POT-Creation-Date: 2026-11-02 11:36+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -443,7 +443,7 @@ msgstr "DATEVconnect"
 msgid "DATEVconnect Client ID"
 msgstr "DATEVconnect-Mandanten-ID"
 
-#: datev/connectors/datevconnect.py:252
+#: datev/connectors/datevconnect.py:254
 msgid "DATEVconnect has no open fiscal year for this client."
 msgstr "DATEVconnect hat für diesen Mandanten kein offenes Wirtschaftsjahr."
 
@@ -711,7 +711,7 @@ msgstr "Das Wirtschaftsjahr {0} existiert in DATEV nicht."
 msgid "Fiscal year {0} is locked in DATEV."
 msgstr "Das Wirtschaftsjahr {0} ist in DATEV gesperrt."
 
-#: datev/connectors/datevconnect.py:259
+#: datev/connectors/datevconnect.py:261
 #, python-brace-format
 msgid "Fiscal year {0}: {1}"
 msgstr "Wirtschaftsjahr {0}: {1}"
@@ -1042,7 +1042,7 @@ msgstr "Typ des Geschäftspartners"
 msgid "Party account {0} belongs to another client."
 msgstr "Personenkonto {0} gehört zu einem anderen Mandanten."
 
-#: datev/connectors/datevconnect.py:247
+#: datev/connectors/datevconnect.py:249
 #, python-brace-format
 msgid "Party account {0} has no account number."
 msgstr "Personenkonto {0} hat keine Kontonummer."
@@ -1117,7 +1117,7 @@ msgstr "Referenz-DocType"
 msgid "Reference Name"
 msgstr "Referenzname"
 
-#: datev/connectors/datevconnect.py:97 datev/connectors/datevconnect.py:258
+#: datev/connectors/datevconnect.py:97 datev/connectors/datevconnect.py:260
 msgid "Rejected by DATEVconnect."
 msgstr "Von DATEVconnect abgelehnt."
 
