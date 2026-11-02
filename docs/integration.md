@@ -192,7 +192,7 @@ Rules to know:
 
 n8n, scripts or any other system call the four whitelisted methods `submit_document`, `submit_party`, `submit_booking` and `status`, see [intake API](intake-api.md). In n8n an HTTP Request node with a header credential `Authorization: token <api_key>:<api_secret>` is enough: call `submit_party`, then `submit_document` with the base64 PDF, then `submit_booking` once per line using the names returned. Poll `status` with the `source_key` to see the document and its bookings.
 
-A separate app, `datev_erpnext`, is planned. It feeds sales invoices, cancellation invoices and parties from ERPNext automatically, so with ERPNext you will not write the code above yourself.
+With ERPNext, use the adapter app [datev_erpnext](https://github.com/EffizienzAgent/datev_erpnext) instead. It feeds sales invoices, cancellation invoices and parties automatically, so you do not write the code above yourself. Its [setup guide](https://github.com/EffizienzAgent/datev_erpnext/blob/main/docs/setup.md) covers settings, go-live and backfill.
 
 ## Daily operation
 

@@ -4,13 +4,13 @@ A DATEV integration for the Frappe Framework: bookings with Beleglink, EXTF and 
 
 The `datev` app delivers bookings to DATEV complete and with a document link (Beleglink), so the tax office does not have to match receipts by hand. It keeps one booking per voucher, controls when and what is sent, and makes sure nothing is sent twice.
 
-It works with any source system through the [intake API](docs/intake-api.md). A separate ERPNext adapter app (`datev_erpnext`) is planned; this core app depends on Frappe only.
+It works with any source system through the [intake API](docs/intake-api.md). For ERPNext, the adapter app [datev_erpnext](https://github.com/EffizienzAgent/datev_erpnext) feeds submitted sales invoices automatically. This core app depends on Frappe only.
 
 > **Work in progress.** This app has not been verified against a real DATEV Rechnungswesen, DATEVconnect or Business OS yet; the trial import is pending. APIs and doctypes may change before 1.0. Use at your own risk and start with a test client. New here? Read the [integration guide](docs/integration.md).
 
 ## Status
 
-The first release covers sales invoices (including cancellation invoices) delivered through the intake API or Python, document storage in DATEV Unternehmen online (DUo) via Business OS or by e-mail, and booking export via DATEVconnect or EXTF files (download or e-mail). Payments, incoming invoices, a generic webhook storage connector and DocArchive as storage are planned.
+The first release covers sales invoices (including cancellation invoices) delivered through the intake API or Python, document storage in DATEV Unternehmen online (DUo) via Business OS or by e-mail, and booking export via DATEVconnect or EXTF files (download or e-mail). ERPNext sales invoices arrive through [datev_erpnext](https://github.com/EffizienzAgent/datev_erpnext). Payments, incoming invoices, a generic webhook storage connector and [DocArchive](https://github.com/EffizienzAgent/docarchive) as storage are planned.
 
 ## No compliance promise
 
@@ -55,6 +55,20 @@ bench --site <site> install-app datev
 ```
 
 **Compatibility:** Frappe v16. Next: the [integration guide](docs/integration.md).
+
+With ERPNext, also install the adapter:
+
+```bash
+bench get-app https://github.com/EffizienzAgent/datev_erpnext --branch version-16
+bench --site <site> install-app datev_erpnext
+```
+
+## Related apps
+
+- [datev_erpnext](https://github.com/EffizienzAgent/datev_erpnext): ERPNext adapter. Turns submitted sales invoices and cancellation invoices into documents, bookings and party accounts of this app.
+- [DocArchive](https://github.com/EffizienzAgent/docarchive): WORM archive for business documents. Planned as a storage connector, so archived documents can serve as the document image or carry their own Beleglink. Not connected yet.
+- [einvoice-reader](https://github.com/EffizienzAgent/einvoice-reader): reads ZUGFeRD, Factur-X and XRechnung into one JSON. Planned as the intake for incoming invoices.
+- [s3storage](https://github.com/EffizienzAgent/s3storage): stores Frappe files, including document images, in S3-compatible storage.
 
 ## Professional setup & support
 
