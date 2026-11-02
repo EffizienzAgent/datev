@@ -2,3 +2,4 @@
 
 [post_model_sync]
 datev.patches.v0_2.confirm_existing_extf_batches
+datev.patches.v0_2.set_event_labels

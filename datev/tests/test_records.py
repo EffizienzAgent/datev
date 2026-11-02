@@ -88,6 +88,13 @@ class TestRecords(IntegrationTestCase):
 		for permission in meta.permissions:
 			self.assertFalse(permission.write or permission.delete)
 
+	def test_event_log_label(self):
+		log_event("DATEV Client", self.client.name, "import_confirmed")
+		self.assertEqual(frappe.get_last_doc("DATEV Event Log").label, "Import confirmed")
+		log_event("DATEV Client", self.client.name, "custom_event")
+		self.assertEqual(frappe.get_last_doc("DATEV Event Log").label, "custom_event")
+		self.assertEqual(frappe.get_meta("DATEV Event Log").title_field, "label")
+
 	def test_event_log_truncates_response(self):
 		log_event("DATEV Client", self.client.name, "big", response="x" * 30000)
 		self.assertLessEqual(len(frappe.get_last_doc("DATEV Event Log").response), 20000)

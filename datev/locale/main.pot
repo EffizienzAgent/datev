@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:40+0000\n"
-"PO-Revision-Date: 2026-11-02 18:40+0000\n"
+"POT-Creation-Date: 2026-11-02 18:43+0000\n"
+"PO-Revision-Date: 2026-11-02 18:43+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
@@ -99,7 +99,7 @@ msgid "Approve this batch and send it to DATEV?"
 msgstr ""
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
-#: datev/datev/doctype/datev_batch/datev_batch.json:61
+#: datev/datev/doctype/datev_batch/datev_batch.json:61 datev/events.py:11
 msgid "Approved"
 msgstr ""
 
@@ -280,6 +280,7 @@ msgstr ""
 
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:29
 msgid "Created"
 msgstr ""
 
@@ -497,6 +498,10 @@ msgstr ""
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr ""
 
+#: datev/events.py:15
+msgid "Delivery uncertain"
+msgstr ""
+
 #. Label of the direction (Select) field in DocType 'DATEV Document'
 #. Label of the direction (Select) field in DocType 'DATEV Document Type Rule'
 #: datev/datev/doctype/datev_document/datev_document.json:70
@@ -506,6 +511,7 @@ msgstr ""
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:151
+#: datev/events.py:26
 msgid "Discarded"
 msgstr ""
 
@@ -630,6 +636,10 @@ msgstr ""
 msgid "E-mail"
 msgstr ""
 
+#: datev/events.py:20
+msgid "E-mail sent again"
+msgstr ""
+
 #: datev/datev/doctype/datev_batch/datev_batch.js:29
 msgid "E-mail sent."
 msgstr ""
@@ -671,11 +681,12 @@ msgstr ""
 
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:33
 msgid "Error"
 msgstr ""
 
 #. Label of the event (Data) field in DocType 'DATEV Event Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:50
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:51
 msgid "Event"
 msgstr ""
 
@@ -699,7 +710,7 @@ msgstr ""
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
 #. Option for the 'Status' (Select) field in DocType 'DATEV Booking'
 #: datev/datev/doctype/datev_batch/datev_batch.json:61
-#: datev/datev/doctype/datev_booking/datev_booking.json:153
+#: datev/datev/doctype/datev_booking/datev_booking.json:153 datev/events.py:14
 msgid "Failed"
 msgstr ""
 
@@ -727,6 +738,10 @@ msgstr ""
 #. Label of the file_name (Data) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:104
 msgid "File Name"
+msgstr ""
+
+#: datev/events.py:18
+msgid "File ready"
 msgstr ""
 
 #: datev/dispatch.py:365
@@ -816,8 +831,13 @@ msgstr ""
 msgid "Import Confirmed On"
 msgstr ""
 
+#: datev/events.py:19
+msgid "Import confirmed"
+msgstr ""
+
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:30
 msgid "Imported"
 msgstr ""
 
@@ -850,6 +870,11 @@ msgstr ""
 #: datev/datev/doctype/datev_booking/datev_booking.json:76
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:53
 msgid "Kind"
+msgstr ""
+
+#. Label of the label (Data) field in DocType 'DATEV Event Log'
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:57
+msgid "Label"
 msgstr ""
 
 #. Label of the last_dispatch_on (Datetime) field in DocType 'DATEV Client'
@@ -906,9 +931,17 @@ msgstr ""
 msgid "Mark this batch as not delivered? Its bookings will be sent again."
 msgstr ""
 
-#: datev/documents.py:156
+#: datev/events.py:25
+msgid "Marked as uploaded"
+msgstr ""
+
+#: datev/documents.py:157
 #, python-brace-format
 msgid "Marked as uploaded as {0}: {1}"
+msgstr ""
+
+#: datev/events.py:32
+msgid "Marked resolved"
 msgstr ""
 
 #: datev/parties.py:187
@@ -958,7 +991,7 @@ msgstr ""
 #: datev/datev/doctype/datev_batch/datev_batch.json:119
 #: datev/datev/doctype/datev_booking/datev_booking.json:175
 #: datev/datev/doctype/datev_document/datev_document.json:170
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:56
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:63
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:111
 msgid "Message"
 msgstr ""
@@ -1096,7 +1129,7 @@ msgid "Overdue"
 msgstr ""
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
-#: datev/datev/doctype/datev_batch/datev_batch.json:61
+#: datev/datev/doctype/datev_batch/datev_batch.json:61 datev/events.py:13
 msgid "Partially Sent"
 msgstr ""
 
@@ -1199,13 +1232,13 @@ msgid "Reason"
 msgstr ""
 
 #. Label of the reference_doctype (Link) field in DocType 'DATEV Event Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:36
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:37
 msgid "Reference DocType"
 msgstr ""
 
 #. Label of the reference_name (Dynamic Link) field in DocType 'DATEV Event
 #. Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:43
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:44
 msgid "Reference Name"
 msgstr ""
 
@@ -1236,6 +1269,10 @@ msgstr ""
 msgid "Reset to Pending"
 msgstr ""
 
+#: datev/events.py:21
+msgid "Reset to pending"
+msgstr ""
+
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:31
 msgid "Resolution"
 msgstr ""
@@ -1245,8 +1282,16 @@ msgstr ""
 msgid "Resolve"
 msgstr ""
 
+#: datev/events.py:16
+msgid "Resolved as delivered"
+msgstr ""
+
+#: datev/events.py:17
+msgid "Resolved as not delivered"
+msgstr ""
+
 #. Label of the response (Code) field in DocType 'DATEV Event Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:61
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:68
 msgid "Response"
 msgstr ""
 
@@ -1258,6 +1303,10 @@ msgstr ""
 #. Label of the responsible_user (Link) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:342
 msgid "Responsible User"
+msgstr ""
+
+#: datev/events.py:27
+msgid "Retried"
 msgstr ""
 
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:7
@@ -1330,7 +1379,7 @@ msgid "Sending Batches"
 msgstr ""
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
-#: datev/datev/doctype/datev_batch/datev_batch.json:61
+#: datev/datev/doctype/datev_batch/datev_batch.json:61 datev/events.py:12
 msgid "Sent"
 msgstr ""
 
@@ -1500,6 +1549,7 @@ msgstr ""
 
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:31
 msgid "To Clarify"
 msgstr ""
 
@@ -1534,12 +1584,21 @@ msgstr ""
 msgid "Upload a master data export from DATEV to match existing accounts."
 msgstr ""
 
+#: datev/events.py:24
+msgid "Upload failed"
+msgstr ""
+
 #: datev/connectors/business_os.py:30
 msgid "Upload may have reached DATEV. Check DUo before retrying."
 msgstr ""
 
+#: datev/events.py:23
+msgid "Upload will be retried"
+msgstr ""
+
 #. Option for the 'Status' (Select) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:151
+#: datev/events.py:22
 msgid "Uploaded"
 msgstr ""
 
@@ -1582,6 +1641,10 @@ msgstr ""
 #. Client'
 #: datev/datev/doctype/datev_client/datev_client.json:398
 msgid "When DATEV accounts were last matched. EXTF clients check new account numbers against this import."
+msgstr ""
+
+#: datev/events.py:28
+msgid "Will be retried"
 msgstr ""
 
 #. Option for the 'Is Return' (Select) field in DocType 'DATEV Document Type

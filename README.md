@@ -34,7 +34,7 @@ datev is a technical tool. It does not make you compliant with DATEV requirement
 - [Dispatch schedule and approval](docs/concepts.md#flow): daily, weekly or monthly, with release by the responsible person and held bookings.
 - [Duplicate protection](docs/concepts.md#duplicate-protection): transferred bookings are never sent again; uncertain deliveries wait for `resolve_batch`.
 - [Party accounts](docs/concepts.md#party-accounts) with number assignment and matching against existing DATEV accounts.
-- [Status report and notifications](docs/concepts.md#visibility) for pending, stuck and overdue items.
+- [Status report and notifications](docs/concepts.md#visibility) for pending, stuck and overdue items, and EXTF files until the tax office confirms the import.
 - [Intake API](docs/intake-api.md) for documents, parties and bookings.
 - [German translations](docs/development.md#translations) for the whole UI.
 

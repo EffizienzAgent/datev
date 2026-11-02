@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 18:40+0000\n"
+"POT-Creation-Date: 2026-11-02 18:43+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -101,7 +101,7 @@ msgid "Approve this batch and send it to DATEV?"
 msgstr "Diesen Buchungsstapel freigeben und an DATEV senden?"
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
-#: datev/datev/doctype/datev_batch/datev_batch.json:61
+#: datev/datev/doctype/datev_batch/datev_batch.json:61 datev/events.py:11
 msgid "Approved"
 msgstr "Freigegeben"
 
@@ -282,6 +282,7 @@ msgstr "Gegenkonto"
 
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:29
 msgid "Created"
 msgstr "Angelegt"
 
@@ -498,6 +499,10 @@ msgstr "Debitorennummerierung"
 msgid "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."
 msgstr "Die Übergabe an DATEV ist unsicher. Prüfen Sie DATEV und klären Sie danach den Buchungsstapel."
 
+#: datev/events.py:15
+msgid "Delivery uncertain"
+msgstr "Übermittlung unsicher"
+
 #. Label of the direction (Select) field in DocType 'DATEV Document'
 #. Label of the direction (Select) field in DocType 'DATEV Document Type Rule'
 #: datev/datev/doctype/datev_document/datev_document.json:70
@@ -507,6 +512,7 @@ msgstr "Richtung"
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:151
+#: datev/events.py:26
 msgid "Discarded"
 msgstr "Verworfen"
 
@@ -630,6 +636,10 @@ msgstr "Fälligkeitsdatum"
 msgid "E-mail"
 msgstr "E-Mail"
 
+#: datev/events.py:20
+msgid "E-mail sent again"
+msgstr "E-Mail erneut gesendet"
+
 #: datev/datev/doctype/datev_batch/datev_batch.js:29
 msgid "E-mail sent."
 msgstr "E-Mail gesendet."
@@ -671,11 +681,12 @@ msgstr "Aktiviert"
 
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:33
 msgid "Error"
 msgstr "Fehler"
 
 #. Label of the event (Data) field in DocType 'DATEV Event Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:50
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:51
 msgid "Event"
 msgstr "Ereignis"
 
@@ -699,7 +710,7 @@ msgstr "Externe ID"
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
 #. Option for the 'Status' (Select) field in DocType 'DATEV Booking'
 #: datev/datev/doctype/datev_batch/datev_batch.json:61
-#: datev/datev/doctype/datev_booking/datev_booking.json:153
+#: datev/datev/doctype/datev_booking/datev_booking.json:153 datev/events.py:14
 msgid "Failed"
 msgstr "Fehlgeschlagen"
 
@@ -728,6 +739,10 @@ msgstr "Datei"
 #: datev/datev/doctype/datev_document/datev_document.json:104
 msgid "File Name"
 msgstr "Dateiname"
+
+#: datev/events.py:18
+msgid "File ready"
+msgstr "Datei bereit"
 
 #: datev/dispatch.py:365
 msgid "Files are not delivered to DATEV directly. Mark the batch as not delivered to export it again."
@@ -816,8 +831,13 @@ msgstr "Import bestätigt von"
 msgid "Import Confirmed On"
 msgstr "Import bestätigt am"
 
+#: datev/events.py:19
+msgid "Import confirmed"
+msgstr "Import bestätigt"
+
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:30
 msgid "Imported"
 msgstr "Importiert"
 
@@ -852,6 +872,11 @@ msgstr "Ist Stornorechnung"
 msgid "Kind"
 msgstr "Art"
 
+#. Label of the label (Data) field in DocType 'DATEV Event Log'
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:57
+msgid "Label"
+msgstr "Bezeichnung"
+
 #. Label of the last_dispatch_on (Datetime) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:354
 msgid "Last Dispatch On"
@@ -880,7 +905,7 @@ msgstr "Der Zeilenschlüssel {0} existiert für diesen Beleg bereits."
 #. Label of the mandate_section (Section Break) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:112
 msgid "Mandate"
-msgstr "Mandat"
+msgstr "Mandantendaten"
 
 #. Label of the mappings_section (Section Break) field in DocType 'DATEV
 #. Client'
@@ -906,10 +931,18 @@ msgstr "Als geklärt markieren"
 msgid "Mark this batch as not delivered? Its bookings will be sent again."
 msgstr "Diesen Buchungsstapel als nicht übergeben markieren? Seine Buchungen werden erneut gesendet."
 
-#: datev/documents.py:156
+#: datev/events.py:25
+msgid "Marked as uploaded"
+msgstr "Als hochgeladen markiert"
+
+#: datev/documents.py:157
 #, python-brace-format
 msgid "Marked as uploaded as {0}: {1}"
 msgstr "Als hochgeladen markiert mit {0}: {1}"
+
+#: datev/events.py:32
+msgid "Marked resolved"
+msgstr "Als geklärt markiert"
 
 #: datev/parties.py:187
 #, python-brace-format
@@ -958,7 +991,7 @@ msgstr "Aus Datei abgleichen"
 #: datev/datev/doctype/datev_batch/datev_batch.json:119
 #: datev/datev/doctype/datev_booking/datev_booking.json:175
 #: datev/datev/doctype/datev_document/datev_document.json:170
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:56
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:63
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:111
 msgid "Message"
 msgstr "Meldung"
@@ -1096,7 +1129,7 @@ msgid "Overdue"
 msgstr "Überfällig"
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
-#: datev/datev/doctype/datev_batch/datev_batch.json:61
+#: datev/datev/doctype/datev_batch/datev_batch.json:61 datev/events.py:13
 msgid "Partially Sent"
 msgstr "Teilweise gesendet"
 
@@ -1199,13 +1232,13 @@ msgid "Reason"
 msgstr "Begründung"
 
 #. Label of the reference_doctype (Link) field in DocType 'DATEV Event Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:36
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:37
 msgid "Reference DocType"
 msgstr "Referenz-DocType"
 
 #. Label of the reference_name (Dynamic Link) field in DocType 'DATEV Event
 #. Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:43
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:44
 msgid "Reference Name"
 msgstr "Referenzname"
 
@@ -1215,7 +1248,7 @@ msgstr "Von DATEVconnect abgelehnt."
 
 #: datev/datev/doctype/datev_booking/datev_booking.js:8
 msgid "Release"
-msgstr "Freigeben"
+msgstr "Zurückhalten aufheben"
 
 #. Label of the require_document_link (Check) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:348
@@ -1236,6 +1269,10 @@ msgstr "Zurückgesetzt von {0}: {1}"
 msgid "Reset to Pending"
 msgstr "Auf Ausstehend zurücksetzen"
 
+#: datev/events.py:21
+msgid "Reset to pending"
+msgstr "Auf ausstehend zurückgesetzt"
+
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:31
 msgid "Resolution"
 msgstr "Klärung"
@@ -1245,8 +1282,16 @@ msgstr "Klärung"
 msgid "Resolve"
 msgstr "Klären"
 
+#: datev/events.py:16
+msgid "Resolved as delivered"
+msgstr "Als übermittelt geklärt"
+
+#: datev/events.py:17
+msgid "Resolved as not delivered"
+msgstr "Als nicht übermittelt geklärt"
+
 #. Label of the response (Code) field in DocType 'DATEV Event Log'
-#: datev/datev/doctype/datev_event_log/datev_event_log.json:61
+#: datev/datev/doctype/datev_event_log/datev_event_log.json:68
 msgid "Response"
 msgstr "Antwort"
 
@@ -1259,6 +1304,10 @@ msgstr "Verantwortliche Rolle"
 #: datev/datev/doctype/datev_client/datev_client.json:342
 msgid "Responsible User"
 msgstr "Verantwortlicher Benutzer"
+
+#: datev/events.py:27
+msgid "Retried"
+msgstr "Erneut versucht"
 
 #: datev/datev/doctype/datev_party_account/datev_party_account.js:7
 msgid "Retry"
@@ -1330,7 +1379,7 @@ msgid "Sending Batches"
 msgstr "Buchungsstapel im Versand"
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
-#: datev/datev/doctype/datev_batch/datev_batch.json:61
+#: datev/datev/doctype/datev_batch/datev_batch.json:61 datev/events.py:12
 msgid "Sent"
 msgstr "Gesendet"
 
@@ -1396,15 +1445,15 @@ msgstr "Ablage-Konnektor"
 #: datev/datev/doctype/datev_booking/datev_booking.json:153
 #: datev/datev/doctype/datev_document/datev_document.json:151
 msgid "Stuck"
-msgstr "Hängt"
+msgstr "Blockiert"
 
 #: datev/datev/report/datev_status/datev_status.py:32
 msgid "Stuck Bookings"
-msgstr "Hängende Buchungen"
+msgstr "Blockierte Buchungen"
 
 #: datev/datev/report/datev_status/datev_status.py:34
 msgid "Stuck Documents"
-msgstr "Hängende Belege"
+msgstr "Blockierte Belege"
 
 #. Option for the 'Dispatch Weekday' (Select) field in DocType 'DATEV Client'
 #: datev/datev/doctype/datev_client/datev_client.json:311
@@ -1500,6 +1549,7 @@ msgstr "Bezeichnung"
 
 #. Option for the 'Sync Status' (Select) field in DocType 'DATEV Party Account'
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:103
+#: datev/events.py:31
 msgid "To Clarify"
 msgstr "Zu klären"
 
@@ -1534,12 +1584,21 @@ msgstr "Unbekannter Konnektor: {0}"
 msgid "Upload a master data export from DATEV to match existing accounts."
 msgstr "Laden Sie einen Stammdatenexport aus DATEV hoch, um bestehende Konten abzugleichen."
 
+#: datev/events.py:24
+msgid "Upload failed"
+msgstr "Upload fehlgeschlagen"
+
 #: datev/connectors/business_os.py:30
 msgid "Upload may have reached DATEV. Check DUo before retrying."
 msgstr "Der Upload ist möglicherweise bei DATEV angekommen. Prüfen Sie DUo, bevor Sie es erneut versuchen."
 
+#: datev/events.py:23
+msgid "Upload will be retried"
+msgstr "Upload wird erneut versucht"
+
 #. Option for the 'Status' (Select) field in DocType 'DATEV Document'
 #: datev/datev/doctype/datev_document/datev_document.json:151
+#: datev/events.py:22
 msgid "Uploaded"
 msgstr "Hochgeladen"
 
@@ -1583,6 +1642,10 @@ msgstr "Wöchentlich"
 #: datev/datev/doctype/datev_client/datev_client.json:398
 msgid "When DATEV accounts were last matched. EXTF clients check new account numbers against this import."
 msgstr "Zeitpunkt des letzten Abgleichs der DATEV-Konten. EXTF-Mandanten prüfen neue Kontonummern gegen diesen Import."
+
+#: datev/events.py:28
+msgid "Will be retried"
+msgstr "Wird erneut versucht"
 
 #. Option for the 'Is Return' (Select) field in DocType 'DATEV Document Type
 #. Rule'

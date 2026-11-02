@@ -47,7 +47,7 @@ Returns `{"name": "..."}`.
 
 ## `datev.api.submit_booking` (POST)
 
-Parameters: `document` (name returned by `submit_document`), `line_key`, `kind`, `party_account` (name returned by `submit_party`), `contra_account`, `amount`, `debit_credit` (`S` or `H`), and optionally `tax_rate`, `bu_key`, `tax_code`, `posting_text`, `due_date`.
+Parameters: `document` (name returned by `submit_document`), `line_key`, `kind`, `party_account` (name returned by `submit_party`), `contra_account`, `amount`, `debit_credit` (`S` or `H`), and optionally `tax_rate`, `bu_key`, `tax_code`, `posting_text`, `due_date`. A `tax_code` must have a row in the client's tax keys, otherwise the call fails with 417.
 
 Returns `{"name": "...", "status": "Pending"}`.
 
@@ -71,7 +71,7 @@ Returns the document state and its bookings:
 
 ```json
 {
-  "document": {"status": "Uploaded", "external_id": "...", "program_code": "DUO"},
+  "document": {"status": "Uploaded", "external_id": "...", "program_code": "BEDI"},
   "bookings": [{"line_key": "1", "status": "Pending", "batch": null, "message": null}]
 }
 ```

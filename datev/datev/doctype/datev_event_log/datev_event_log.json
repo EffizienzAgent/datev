@@ -26,6 +26,7 @@
   "reference_doctype",
   "reference_name",
   "event",
+  "label",
   "message",
   "response"
  ],
@@ -51,6 +52,12 @@
    "in_list_view": 1
   },
   {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "in_list_view": 1
+  },
+  {
    "fieldname": "message",
    "fieldtype": "Small Text",
    "label": "Message"
@@ -61,5 +68,6 @@
    "label": "Response",
    "options": "JSON"
   }
- ]
+ ],
+ "title_field": "label"
 }
