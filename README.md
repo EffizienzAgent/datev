@@ -6,6 +6,8 @@ The `datev` app delivers bookings to DATEV complete and with a document link (Be
 
 It works with any source system through the [intake API](docs/intake-api.md). A separate ERPNext adapter app (`datev_erpnext`) is planned; this core app depends on Frappe only.
 
+> **Work in progress.** This app has not been verified against a real DATEV Rechnungswesen, DATEVconnect or Business OS yet; the trial import is pending. APIs and doctypes may change before 1.0. Use at your own risk and start with a test client. New here? Read the [integration guide](docs/integration.md).
+
 ## Status
 
 The first release covers sales invoices (including cancellation invoices) delivered through the intake API or Python, document storage in DATEV Unternehmen online (DUo) via Business OS or by e-mail, and booking export via DATEVconnect or EXTF files (download or e-mail). Payments, incoming invoices, a generic webhook storage connector and DocArchive as storage are planned.
@@ -15,6 +17,8 @@ The first release covers sales invoices (including cancellation invoices) delive
 datev is a technical tool. It does not make you compliant with DATEV requirements, GoBD or any other law or standard, and it gives no tax advice. Account numbers, tax keys, document types and procedures are your responsibility. Check them with your tax advisor.
 
 ## Features
+
+![DATEV batch awaiting approval](docs/images/batch-bookings.png)
 
 **Documents and Beleglink**
 - [Documents with Beleglink](docs/concepts.md#data-model): every booking points to a document, with a GUID known before upload.
@@ -36,6 +40,7 @@ datev is a technical tool. It does not make you compliant with DATEV requirement
 
 ## Documentation
 
+- [Integration guide](docs/integration.md): install, set up a client, feed data, daily operation, go-live checklist
 - [Concepts](docs/concepts.md): data model, statuses, flow, duplicate protection
 - [Connectors](docs/connectors.md): storage, export and master data, adding your own
 - [EXTF](docs/extf.md): format, files, Beleglink, encoding
@@ -49,7 +54,7 @@ bench get-app https://github.com/EffizienzAgent/datev --branch version-16
 bench --site <site> install-app datev
 ```
 
-**Compatibility:** Frappe v16.
+**Compatibility:** Frappe v16. Next: the [integration guide](docs/integration.md).
 
 ## Professional setup & support
 
