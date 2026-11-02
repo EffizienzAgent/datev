@@ -6,7 +6,13 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from datev import dispatch, intake
-from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
+from datev.connectors.base import (
+	ConnectorError,
+	DeliveryUncertain,
+	ExportConnector,
+	ExportItemResult,
+	ExportResult,
+)
 from datev.tests.factories import make_client, make_document, make_party_account
 
 
@@ -343,6 +349,92 @@ class TestDispatch(IntegrationTestCase):
 			with patch.dict(frappe.session, {"user": "approver@example.com"}):
 				dispatch.approve(batch)
 		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Sent")
+
+	def uncertain_batch(self):
+		booking = self.booking()
+		FakeExport.error = DeliveryUncertain("read timed out")
+		batch = dispatch.collect(self.client_doc.name)
+		with patch("frappe.db.rollback"):
+			dispatch.send(batch)
+		FakeExport.error = None
+		return batch, booking
+
+	def test_uncertain_delivery_keeps_batch_sending(self):
+		batch, booking = self.uncertain_batch()
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", batch, ["status", "message"]),
+			("Sending", "Delivery to DATEV is uncertain. Check DATEV, then resolve the batch."),
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", booking, ["status", "batch"]), ("Batched", batch)
+		)
+		self.assertTrue(
+			frappe.db.exists("DATEV Event Log", {"reference_name": batch, "event": "delivery_uncertain"})
+		)
+
+		dispatch.send(batch)
+		with patch("frappe.get_all", side_effect=only_own_client(self.client_doc.name)):
+			dispatch.run()
+		self.assertEqual(len(FakeExport.calls), 1)
+		self.assertEqual(self.status(booking), "Batched")
+
+	def test_resolve_batch_delivered(self):
+		batch, booking = self.uncertain_batch()
+		dispatch.resolve_batch(batch, delivered=True)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Sent")
+		self.assertEqual(self.status(booking), "Exported")
+		self.assertEqual(
+			frappe.db.get_value("DATEV Party Account", self.party.name, "sync_status"), "Created"
+		)
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.resolve_batch(batch, delivered=False)
+
+	def test_resolve_batch_not_delivered(self):
+		batch, booking = self.uncertain_batch()
+		dispatch.resolve_batch(batch, delivered=False)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Failed")
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", booking, ["status", "batch"]), ("Pending", None)
+		)
+
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(len(FakeExport.calls), 2)
+		self.assertEqual(self.status(booking), "Exported")
+
+	def test_resolve_batch_requires_manager(self):
+		batch, _booking = self.uncertain_batch()
+		with patch("frappe.only_for", side_effect=frappe.PermissionError) as only_for:
+			with self.assertRaises(frappe.PermissionError):
+				dispatch.resolve_batch(batch, delivered=True)
+		only_for.assert_called_once_with("DATEV Manager")
+
+	def test_send_empty_batch_marks_sent(self):
+		booking = self.booking()
+		batch = dispatch.collect(self.client_doc.name)
+		frappe.db.set_value("DATEV Booking", booking, {"status": "Pending", "batch": None})
+		dispatch.send(batch)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", batch, "status"), "Sent")
+		self.assertEqual(FakeExport.calls, [])
+
+	def test_approve_missing_batch_is_quiet(self):
+		self.assertIsNone(dispatch.approve("DATEV-BATCH-MISSING"))
+
+	def test_discard_removes_open_bookings(self):
+		document = self.document(status="Pending", external_id=None)
+		stuck = self.booking(document)
+		failed = self.booking(document, line_key="2")
+		frappe.db.set_value("DATEV Booking", stuck, "status", "Stuck")
+		frappe.db.set_value("DATEV Booking", failed, "status", "Failed")
+		intake.discard_document(document.source_key)
+		self.assertFalse(frappe.db.exists("DATEV Booking", {"document": document.name}))
+
+	def test_hold_rejects_stuck_booking(self):
+		booking = self.booking(self.document(status="Pending", external_id=None))
+		dispatch.collect(self.client_doc.name)
+		self.assertEqual(self.status(booking), "Stuck")
+		with self.assertRaises(frappe.ValidationError):
+			dispatch.hold(booking)
 
 
 def only_own_client(client):

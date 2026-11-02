@@ -11,6 +11,10 @@ class ConnectorError(Exception):
 		self.response = response
 
 
+class DeliveryUncertain(ConnectorError):
+	pass
+
+
 @dataclass
 class StorageResult:
 	external_id: str | None

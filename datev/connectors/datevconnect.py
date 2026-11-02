@@ -5,9 +5,10 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, today
 
-from datev.clients.datevconnect import DATEVconnect
+from datev.clients.datevconnect import DATEVconnect, DATEVconnectError
 from datev.connectors.base import (
 	ConnectorError,
+	DeliveryUncertain,
 	ExportConnector,
 	ExportItemResult,
 	ExportResult,
@@ -135,7 +136,9 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 				response = api.post_proposals(
 					client_id, fiscal_year, direction, [item for _b, item in entries]
 				)
-			except ConnectorError as e:
+			except DATEVconnectError as e:
+				if e.maybe_sent or (e.status or 0) >= 500:
+					raise DeliveryUncertain(str(e), response=e.response) from e
 				results.update(
 					{booking.name: ExportItemResult(booking.name, False, str(e)) for booking in group}
 				)

@@ -13,9 +13,11 @@ class DATEVconnectError(ConnectorError):
 		status: int | None = None,
 		retryable: bool = False,
 		response: object = None,
+		maybe_sent: bool = False,
 	):
 		super().__init__(message, retryable=retryable, response=response)
 		self.status = status
+		self.maybe_sent = maybe_sent
 
 
 class DATEVconnect:
@@ -87,7 +89,7 @@ class DATEVconnect:
 				timeout=60,
 			)
 		except http.TransportError as e:
-			raise DATEVconnectError(str(e), retryable=True) from e
+			raise DATEVconnectError(str(e), retryable=True, maybe_sent=e.maybe_sent) from e
 
 		if 200 <= response.status < 300:
 			return response.data

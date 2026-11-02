@@ -1,9 +1,15 @@
 frappe.ui.form.on("DATEV Booking", {
-	refresh(frm) {
-		const open = ["Pending", "Stuck", "Failed"].includes(frm.doc.status);
-		if (frm.doc.held && open) {
+	async refresh(frm) {
+		if (frm.doc.held) {
 			frm.add_custom_button(__("Release"), () => frm.events.hold(frm, false));
-		} else if (open || frm.doc.status === "Batched") {
+			return;
+		}
+		let holdable = frm.doc.status === "Pending";
+		if (frm.doc.status === "Batched" && frm.doc.batch) {
+			const { message } = await frappe.db.get_value("DATEV Batch", frm.doc.batch, "status");
+			holdable = message?.status === "Awaiting Approval";
+		}
+		if (holdable) {
 			frm.add_custom_button(__("Hold"), () => frm.events.hold(frm, true));
 		}
 	},

@@ -93,7 +93,7 @@ def discard_document(source_key: str) -> None:
 	document.db_set("status", "Discarded")
 	log_event(DOCUMENT, document.name, "discarded")
 	for booking in frappe.get_all(
-		"DATEV Booking", filters={"document": document.name, "status": "Pending"}, pluck="name"
+		BOOKING, filters={"document": document.name, "status": ("in", OPEN_BOOKING_STATUSES)}, pluck="name"
 	):
 		frappe.delete_doc("DATEV Booking", booking, ignore_permissions=True)
 

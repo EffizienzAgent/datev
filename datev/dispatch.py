@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import getdate, now_datetime
 
 from datev.connectors import registry
-from datev.connectors.base import ConnectorError
+from datev.connectors.base import ConnectorError, DeliveryUncertain
 from datev.events import log_event
 from datev.intake import BOOKING, OPEN_BOOKING_STATUSES
 from datev.parties import ensure_in_datev, set_status
@@ -87,8 +87,10 @@ def collect(client: str) -> str | None:
 
 @frappe.whitelist()
 def approve(batch: str) -> None:
-	client = frappe.get_doc(CLIENT, frappe.db.get_value(BATCH, batch, "client"))
-	check_approver(client)
+	client = frappe.db.get_value(BATCH, batch, "client")
+	if not client:
+		return
+	check_approver(frappe.get_doc(CLIENT, client))
 	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Awaiting Approval":
 		return
 	frappe.db.set_value(
@@ -116,12 +118,15 @@ def hold(booking: str, held: bool = True) -> None:
 	frappe.only_for(DISPATCH_ROLES)
 	held = frappe.utils.sbool(held)
 	doc = frappe.get_doc(BOOKING, booking, for_update=True)
-	if doc.status in OPEN_BOOKING_STATUSES:
-		doc.db_set("held", int(held))
+	if not held and doc.status in OPEN_BOOKING_STATUSES:
+		doc.db_set("held", 0)
+		return
+	if held and doc.status == "Pending":
+		doc.db_set("held", 1)
 		return
 	batch = doc.batch
 	if not held or doc.status != "Batched" or not batch:
-		frappe.throw(_("Booking {0} can no longer be held.").format(booking))
+		frappe.throw(_("Booking {0} cannot be held.").format(booking))
 	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Awaiting Approval":
 		frappe.throw(_("Booking {0} is in a batch that is no longer awaiting approval.").format(booking))
 	doc.db_set({"status": "Pending", "held": 1, "batch": None})
@@ -132,25 +137,37 @@ def hold(booking: str, held: bool = True) -> None:
 def send(batch: str) -> None:
 	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Approved":
 		return
+	bookings = batched(batch)
+	if not bookings:
+		frappe.db.set_value(BATCH, batch, {"status": "Sent", "sent_on": now_datetime()})
+		return
 	frappe.db.set_value(BATCH, batch, "status", "Sending")
 	frappe.db.commit()
 
 	batch_doc = frappe.get_doc(BATCH, batch)
-	bookings = [
-		frappe.get_doc(BOOKING, name)
-		for name in frappe.get_all(
-			BOOKING, filters={"batch": batch, "status": "Batched"}, pluck="name", order_by="creation asc"
-		)
-	]
 	try:
 		connector = registry.get_export(frappe.get_doc(CLIENT, batch_doc.client))
 		result = connector.export(batch_doc, bookings)
+	except DeliveryUncertain as error:
+		frappe.db.rollback()
+		message = _("Delivery to DATEV is uncertain. Check DATEV, then resolve the batch.")
+		frappe.db.set_value(BATCH, batch, "message", message)
+		log_event(BATCH, batch, "delivery_uncertain", str(error), error.response)
 	except Exception as error:
 		frappe.db.rollback()
 		reset(batch, bookings, error)
 	else:
 		record(batch, bookings, connector.final_status, result)
 	frappe.db.commit()
+
+
+def batched(batch: str) -> list:
+	return [
+		frappe.get_doc(BOOKING, name)
+		for name in frappe.get_all(
+			BOOKING, filters={"batch": batch, "status": "Batched"}, pluck="name", order_by="creation asc"
+		)
+	]
 
 
 def reset(batch: str, bookings: list, error: Exception) -> None:
@@ -174,17 +191,45 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 			message = item.message if item else _("The export connector returned no result.")
 			booking.db_set({"status": "Failed", "batch": None, "message": message})
 
-	if final_status == "Exported":
-		for name in {booking.party_account for booking in sent}:
-			party_account = frappe.get_doc(PARTY, name)
-			if party_account.sync_status == "New":
-				set_status(party_account, "Created", "", "created")
-
 	failed = len(bookings) - len(sent)
 	status = "Sent" if not failed else "Partially Sent" if sent else "Failed"
 	message = _("{0} sent, {1} failed.").format(len(sent), failed)
 	frappe.db.set_value(BATCH, batch, {"status": status, "message": message, "sent_on": now_datetime()})
+	frappe.db.commit()
+
+	mark_parties_created(sent, final_status)
 	log_event(BATCH, batch, frappe.scrub(status), message, result.response)
+
+
+def mark_parties_created(bookings: list, final_status: str) -> None:
+	if final_status != "Exported":
+		return
+	for name in {booking.party_account for booking in bookings}:
+		party_account = frappe.get_doc(PARTY, name)
+		if party_account.sync_status == "New":
+			set_status(party_account, "Created", "", "created")
+
+
+@frappe.whitelist()
+def resolve_batch(batch: str, delivered: bool) -> None:
+	frappe.only_for("DATEV Manager")
+	delivered = frappe.utils.sbool(delivered)
+	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Sending":
+		frappe.throw(_("Only batches that are still sending can be resolved."))
+	bookings = batched(batch)
+	if delivered:
+		client = frappe.get_doc(CLIENT, frappe.db.get_value(BATCH, batch, "client"))
+		final_status = registry.get_export(client).final_status
+		for booking in bookings:
+			booking.db_set({"status": final_status, "message": ""})
+		mark_parties_created(bookings, final_status)
+		status, event = "Sent", "resolved_delivered"
+	else:
+		for booking in bookings:
+			booking.db_set({"status": "Pending", "batch": None, "message": ""})
+		status, event = "Failed", "resolved_not_delivered"
+	frappe.db.set_value(BATCH, batch, {"status": status, "message": "", "sent_on": now_datetime()})
+	log_event(BATCH, batch, event)
 
 
 def run() -> None:

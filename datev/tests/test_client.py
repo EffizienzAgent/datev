@@ -50,10 +50,18 @@ class TestClient(IntegrationTestCase):
 			make_client(master_data_connector="DATEVconnect", dc_base_url="https://host:58452")
 		make_client(
 			export_connector="DATEVconnect",
+			master_data_connector="DATEVconnect",
 			dc_base_url="https://host:58452/datev/api/accounting/v1",
 			dc_username="user",
 			dc_password="secret",
 		)
+
+	def test_extf_master_data_requires_extf_export(self):
+		credentials = {"dc_base_url": "https://host:58452", "dc_username": "user", "dc_password": "secret"}
+		with self.assertRaises(frappe.ValidationError):
+			make_client(export_connector="DATEVconnect", master_data_connector="EXTF", **credentials)
+		make_client(export_connector="EXTF e-mail", master_data_connector="EXTF", extf_email="x@example.com")
+		make_client(export_connector="EXTF download", master_data_connector="DATEVconnect", **credentials)
 
 	def test_extf_master_data_forbids_datev_numbering(self):
 		for field in ("debtor_numbering", "creditor_numbering"):

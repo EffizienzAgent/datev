@@ -4,7 +4,9 @@ import requests
 
 
 class TransportError(Exception):
-	pass
+	def __init__(self, message: str, *, maybe_sent: bool = False):
+		super().__init__(message)
+		self.maybe_sent = maybe_sent
 
 
 @dataclass
@@ -30,7 +32,7 @@ def request(
 			method, url, headers=headers, params=params, json=json, auth=auth, verify=verify, timeout=timeout
 		)
 	except requests.RequestException as e:
-		raise TransportError(str(e)) from e
+		raise TransportError(str(e), maybe_sent=isinstance(e, requests.ReadTimeout)) from e
 
 	try:
 		data = response.json()

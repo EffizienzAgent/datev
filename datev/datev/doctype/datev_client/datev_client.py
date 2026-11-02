@@ -11,12 +11,14 @@ from datev.parties import import_existing
 
 BU_KEY_PATTERN = re.compile(r"^\d{0,4}$")
 DC = "DATEVconnect"
+EXTF_EXPORTS = ("EXTF download", "EXTF e-mail")
 
 
 class DATEVClient(Document):
 	def validate(self):
 		self.validate_ranges()
 		self.validate_connectors()
+		self.validate_master_data()
 		self.validate_numbering()
 		self.validate_tax_keys()
 		self.validate_account_mappings()
@@ -44,6 +46,10 @@ class DATEVClient(Document):
 			if not self.get(fieldname):
 				label = _(self.meta.get_label(fieldname))
 				frappe.throw(_("{0} is required for the selected connector.").format(label))
+
+	def validate_master_data(self):
+		if self.master_data_connector == "EXTF" and self.export_connector not in EXTF_EXPORTS:
+			frappe.throw(_("The EXTF master data connector requires an EXTF export connector."))
 
 	def validate_numbering(self):
 		if self.master_data_connector == "EXTF" and "DATEV next available" in (
