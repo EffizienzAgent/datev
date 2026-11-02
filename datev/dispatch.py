@@ -66,7 +66,7 @@ def is_overdue(client, now) -> bool:
 	due_date = previous_due_date(client, now.date())
 	if not due_date or not is_due(client, datetime.combine(due_date, time.max)):
 		return False
-	if frappe.db.exists(BOOKING, {"client": client.name, "status": ("in", ("Pending", "Stuck")), "held": 0}):
+	if frappe.db.exists(BOOKING, {"client": client.name, "status": ("in", OPEN_BOOKING_STATUSES), "held": 0}):
 		return True
 	return bool(
 		frappe.db.exists(

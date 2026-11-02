@@ -100,6 +100,8 @@ class TestNotify(IntegrationTestCase):
 		client.last_dispatch_on = datetime(2027, 2, 5, 8, 0)
 		self.assertTrue(dispatch.is_overdue(client, now))
 
+		frappe.db.set_value("DATEV Booking", {"client": client.name}, "status", "Failed")
+		self.assertTrue(dispatch.is_overdue(client, now))
 		frappe.db.set_value("DATEV Booking", {"client": client.name}, "status", "Transferred")
 		self.assertFalse(dispatch.is_overdue(client, now))
 
@@ -132,6 +134,16 @@ class TestNotify(IntegrationTestCase):
 		self.assertEqual(len(entries), 1)
 		self.assertIn("1 stuck documents", entries[0].subject)
 
+	def test_stuck_summary_counts_failed_bookings_and_party_errors(self):
+		client = frappe.get_doc("DATEV Client", self.client_doc.name)
+		document = make_document(client, status="Uploaded", external_id="ID-1")
+		make_booking(document, make_party_account(client, sync_status="Error"), status="Failed")
+		notify.check()
+		entries = logs(self.user, subject=("like", "%stuck%"))
+		self.assertEqual(len(entries), 1)
+		self.assertIn("1 failed bookings", entries[0].subject)
+		self.assertIn("1 party accounts with errors", entries[0].subject)
+
 	def test_credit_warning(self):
 		client = frappe.get_doc("DATEV Client", self.client_doc.name)
 		client.db_set({"bos_credits": 3, "bos_credit_warning": 10})
@@ -157,6 +169,8 @@ class TestNotify(IntegrationTestCase):
 		make_batch(problem)
 		make_batch(problem, status="Sending")
 		make_party_account(problem, sync_status="To Clarify")
+		make_party_account(problem, sync_status="Error")
+		make_booking(make_document(problem), make_party_account(problem), status="Failed")
 		problem.db_set("bos_credits", 7)
 
 		columns, rows = execute({})
@@ -169,10 +183,12 @@ class TestNotify(IntegrationTestCase):
 				"awaiting_approval",
 				"sending_batches",
 				"stuck_bookings",
+				"failed_bookings",
 				"stuck_documents",
 				"documents_without_link",
 				"held",
 				"parties_to_clarify",
+				"party_errors",
 				"overdue",
 				"bos_credits",
 			],
@@ -186,9 +202,11 @@ class TestNotify(IntegrationTestCase):
 				row["stuck_documents"],
 				row["documents_without_link"],
 				row["parties_to_clarify"],
+				row["party_errors"],
+				row["failed_bookings"],
 				row["bos_credits"],
 			),
-			(1, 1, 1, 1, 1, 7),
+			(1, 1, 1, 1, 1, 1, 1, 7),
 		)
 		self.assertLess(list(by_client).index(problem.name), list(by_client).index(quiet.name))
 		self.assertEqual(by_client[quiet.name]["stuck_documents"], 0)

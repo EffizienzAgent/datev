@@ -9,8 +9,10 @@ PROBLEM_FIELDS = (
 	"awaiting_approval",
 	"sending_batches",
 	"stuck_bookings",
+	"failed_bookings",
 	"stuck_documents",
 	"parties_to_clarify",
+	"party_errors",
 	"overdue",
 )
 
@@ -25,10 +27,12 @@ def get_columns() -> list[dict]:
 		column("awaiting_approval", _("Awaiting Approval")),
 		column("sending_batches", _("Sending Batches")),
 		column("stuck_bookings", _("Stuck Bookings")),
+		column("failed_bookings", _("Failed Bookings")),
 		column("stuck_documents", _("Stuck Documents")),
 		column("documents_without_link", _("Documents without Link")),
 		column("held", _("Held")),
 		column("parties_to_clarify", _("Parties to Clarify")),
+		column("party_errors", _("Party Errors")),
 		column("overdue", _("Overdue"), "Check", width=90),
 		column("bos_credits", _("Business OS Credits")),
 	]

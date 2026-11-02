@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-02 11:25+0000\n"
-"PO-Revision-Date: 2026-11-02 11:25+0000\n"
+"POT-Creation-Date: 2026-11-02 11:26+0000\n"
+"PO-Revision-Date: 2026-11-02 11:26+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language-Team: oss@effizienzagent.de\n"
 "MIME-Version: 1.0\n"
@@ -116,7 +116,7 @@ msgstr ""
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Batch'
 #: datev/datev/doctype/datev_batch/datev_batch.json:59
-#: datev/datev/report/datev_status/datev_status.py:25
+#: datev/datev/report/datev_status/datev_status.py:27
 msgid "Awaiting Approval"
 msgstr ""
 
@@ -142,12 +142,12 @@ msgstr ""
 msgid "Batch {0} created."
 msgstr ""
 
-#: datev/notify.py:115
+#: datev/notify.py:118
 #, python-brace-format
 msgid "Batch {0} of {1} has been sending for over an hour. Check DATEV and resolve it."
 msgstr ""
 
-#: datev/notify.py:99
+#: datev/notify.py:102
 #, python-brace-format
 msgid "Batch {0} of {1} is waiting for approval"
 msgstr ""
@@ -190,7 +190,7 @@ msgstr ""
 msgid "Business OS"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:33
+#: datev/datev/report/datev_status/datev_status.py:37
 msgid "Business OS Credits"
 msgstr ""
 
@@ -212,7 +212,7 @@ msgstr ""
 #: datev/datev/doctype/datev_booking/datev_booking.json:54
 #: datev/datev/doctype/datev_document/datev_document.json:54
 #: datev/datev/doctype/datev_party_account/datev_party_account.json:45
-#: datev/datev/report/datev_status/datev_status.py:23
+#: datev/datev/report/datev_status/datev_status.py:25
 msgid "Client"
 msgstr ""
 
@@ -506,7 +506,7 @@ msgstr ""
 msgid "Dispatch day of month must be between 1 and 28."
 msgstr ""
 
-#: datev/notify.py:131
+#: datev/notify.py:134
 #, python-brace-format
 msgid "Dispatch for {0} is overdue"
 msgstr ""
@@ -575,7 +575,7 @@ msgstr ""
 msgid "Document {0} is not in DATEV yet (status {1})."
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:29
+#: datev/datev/report/datev_status/datev_status.py:32
 msgid "Documents without Link"
 msgstr ""
 
@@ -654,6 +654,10 @@ msgstr ""
 msgid "Failed"
 msgstr ""
 
+#: datev/datev/report/datev_status/datev_status.py:30
+msgid "Failed Bookings"
+msgstr ""
+
 #: datev/datev/doctype/datev_client/datev_client.js:6
 msgid "Fetch document types"
 msgstr ""
@@ -706,7 +710,7 @@ msgstr ""
 
 #. Label of the held (Check) field in DocType 'DATEV Booking'
 #: datev/datev/doctype/datev_booking/datev_booking.json:161
-#: datev/datev/report/datev_status/datev_status.py:30
+#: datev/datev/report/datev_status/datev_status.py:33
 msgid "Held"
 msgstr ""
 
@@ -945,7 +949,7 @@ msgstr ""
 msgid "Outgoing Invoice"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:32
+#: datev/datev/report/datev_status/datev_status.py:36
 msgid "Overdue"
 msgstr ""
 
@@ -954,7 +958,7 @@ msgstr ""
 msgid "Partially Sent"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:31
+#: datev/datev/report/datev_status/datev_status.py:34
 msgid "Parties to Clarify"
 msgstr ""
 
@@ -966,6 +970,10 @@ msgstr ""
 #. Label of the party_account (Link) field in DocType 'DATEV Booking'
 #: datev/datev/doctype/datev_booking/datev_booking.json:84
 msgid "Party Account"
+msgstr ""
+
+#: datev/datev/report/datev_status/datev_status.py:35
+msgid "Party Errors"
 msgstr ""
 
 #. Label of the party_name (Data) field in DocType 'DATEV Party Account'
@@ -1152,7 +1160,7 @@ msgstr ""
 msgid "Sending"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:26
+#: datev/datev/report/datev_status/datev_status.py:28
 msgid "Sending Batches"
 msgstr ""
 
@@ -1225,11 +1233,11 @@ msgstr ""
 msgid "Stuck"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:27
+#: datev/datev/report/datev_status/datev_status.py:29
 msgid "Stuck Bookings"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:28
+#: datev/datev/report/datev_status/datev_status.py:31
 msgid "Stuck Documents"
 msgstr ""
 
@@ -1292,7 +1300,7 @@ msgstr ""
 msgid "The source key {0} already belongs to another client."
 msgstr ""
 
-#: datev/protect.py:19
+#: datev/protect.py:20
 #, python-brace-format
 msgid "These fields are maintained by the DATEV app and cannot be changed: {0}"
 msgstr ""
@@ -1321,7 +1329,7 @@ msgstr ""
 msgid "Transferred"
 msgstr ""
 
-#: datev/datev/report/datev_status/datev_status.py:24
+#: datev/datev/report/datev_status/datev_status.py:26
 msgid "Transferred (30 days)"
 msgstr ""
 
@@ -1419,13 +1427,13 @@ msgstr ""
 msgid "{0} sent, {1} failed."
 msgstr ""
 
-#: datev/notify.py:142
+#: datev/notify.py:145
 #, python-brace-format
 msgid "{0}: only {1} Business OS credits left (warning at {2})"
 msgstr ""
 
-#: datev/notify.py:136
+#: datev/notify.py:139
 #, python-brace-format
-msgid "{0}: {1} stuck documents, {2} stuck bookings, {3} party accounts to clarify"
+msgid "{0}: {1} stuck documents, {2} stuck bookings, {3} failed bookings, {4} party accounts to clarify, {5} party accounts with errors"
 msgstr ""
 

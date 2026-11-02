@@ -12,6 +12,7 @@ PARTY = "DATEV Party Account"
 MANAGER_ROLE = "DATEV Manager"
 REPORT_LINK = "/app/query-report/DATEV Status"
 SENDING_GRACE_HOURS = 1
+STUCK_FIELDS = ("stuck_documents", "stuck_bookings", "failed_bookings", "parties_to_clarify", "party_errors")
 
 
 def enabled_users(**filters) -> list[str]:
@@ -50,10 +51,12 @@ def status_counts(client: str, now) -> dict:
 		"awaiting_approval": count(BATCH, client=client, status="Awaiting Approval"),
 		"sending_batches": count(BATCH, client=client, status="Sending"),
 		"stuck_bookings": count(BOOKING, client=client, status="Stuck"),
+		"failed_bookings": count(BOOKING, client=client, status="Failed"),
 		"stuck_documents": count(DOCUMENT, client=client, status="Stuck"),
 		"documents_without_link": count(DOCUMENT, client=client, status="No Link"),
 		"held": count(BOOKING, client=client, held=1),
 		"parties_to_clarify": count(PARTY, client=client, sync_status="To Clarify"),
+		"party_errors": count(PARTY, client=client, sync_status="Error"),
 	}
 
 
@@ -131,11 +134,11 @@ def notify_client(client, now) -> None:
 		alert(users, _("Dispatch for {0} is overdue").format(name), link=link)
 
 	counts = status_counts(client.name, now)
-	stuck = counts["stuck_documents"] + counts["stuck_bookings"] + counts["parties_to_clarify"]
-	if stuck and once_a_day(client.name, "stuck"):
-		subject = _("{0}: {1} stuck documents, {2} stuck bookings, {3} party accounts to clarify").format(
-			name, counts["stuck_documents"], counts["stuck_bookings"], counts["parties_to_clarify"]
-		)
+	if any(counts[field] for field in STUCK_FIELDS) and once_a_day(client.name, "stuck"):
+		subject = _(
+			"{0}: {1} stuck documents, {2} stuck bookings, {3} failed bookings, "
+			"{4} party accounts to clarify, {5} party accounts with errors"
+		).format(name, *(counts[field] for field in STUCK_FIELDS))
 		alert(users, subject, link=link)
 
 	if low_credits(client) and once_a_day(client.name, "credits"):
