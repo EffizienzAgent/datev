@@ -303,12 +303,18 @@ def _line(party):
 	return ";".join(values.get(column, "") for column in COLUMNS)
 
 
-def parse(content: bytes) -> list[RemoteParty]:
+def parse(content: bytes) -> tuple[dict, list[RemoteParty]]:
 	decoded = content.decode("utf-8-sig") if content.startswith(codecs.BOM_UTF8) else content.decode(ENCODING)
 	rows = list(csv.reader(io.StringIO(decoded, newline=""), delimiter=";"))
 	if len(rows) < 2 or rows[0][0] not in ("EXTF", "DTVF") or rows[0][2] != "16":
 		frappe.throw(_("Not a DATEV debtor/creditor file."))
-	account_length = int(rows[0][13] or 4)
+	header = rows[0]
+	account_length = int(header[13] or 4)
+	info = {
+		"consultant_number": int(header[10] or 0),
+		"client_number": int(header[11] or 0),
+		"account_length": account_length,
+	}
 	names = rows[1]
 	parties = []
 	for row in rows[2:]:
@@ -327,7 +333,7 @@ def parse(content: bytes) -> list[RemoteParty]:
 				iban=values.get("IBAN-Nr. 1") or None,
 			)
 		)
-	return parties
+	return info, parties
 
 
 def _kind(number: int, account_length: int) -> str | None:

@@ -3,6 +3,7 @@ from frappe import _
 
 from datev.beleglink import new_guid
 from datev.document_types import DocumentTypeError, resolve
+from datev.documents import enqueue_upload
 from datev.events import log_event
 from datev.protect import internal
 
@@ -66,7 +67,7 @@ def upsert_document(
 	replace_file(document, file_name, content)
 
 	if document.status == "Pending" and frappe.db.get_value("DATEV Client", client, "enabled"):
-		frappe.enqueue("datev.documents.upload", name=document.name, enqueue_after_commit=True, queue="short")
+		enqueue_upload(document.name, frappe.get_doc("DATEV Client", client))
 	return document.name
 
 
@@ -133,12 +134,9 @@ def add_booking(
 	source = frappe.get_doc(DOCUMENT, document)
 	if source.status == "Discarded":
 		frappe.throw(_("Document {0} is discarded and takes no bookings.").format(document))
-	if not bu_key and tax_code:
-		bu_key = frappe.db.get_value(
-			"DATEV Tax Key Rule",
-			{"parent": source.client, "parenttype": "DATEV Client", "tax_code": tax_code},
-			"bu_key",
-		)
+	if tax_code:
+		mapped = tax_key(source.client, tax_code)
+		bu_key = bu_key or mapped
 	booking = internal(frappe.get_doc(BOOKING, existing.name) if existing else frappe.new_doc(BOOKING))
 	booking.update(
 		{
@@ -161,6 +159,23 @@ def add_booking(
 	)
 	booking.save(ignore_permissions=True)
 	return booking.name
+
+
+def tax_key(client: str, tax_code: str) -> str:
+	row = frappe.db.get_value(
+		"DATEV Tax Key Rule",
+		{"parent": client, "parenttype": "DATEV Client", "tax_code": tax_code},
+		"bu_key",
+		as_dict=True,
+	)
+	if row is None:
+		frappe.throw(
+			_(
+				"Tax code {0} has no row in the DATEV Client's tax keys. "
+				"Add it; leave the BU key empty for automatic accounts."
+			).format(tax_code)
+		)
+	return row.bu_key or ""
 
 
 def ensure_party_account(

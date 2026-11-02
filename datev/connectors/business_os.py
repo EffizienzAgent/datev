@@ -9,6 +9,8 @@ PROGRAM_CODE = "BEDI"
 
 
 class BusinessOSStorage(StorageConnector):
+	min_interval = 5
+
 	def api(self) -> BusinessOS:
 		return BusinessOS(self.client.get_password("bos_api_key"), self.client.bos_connection_id)
 
@@ -29,6 +31,14 @@ class BusinessOSStorage(StorageConnector):
 				) from error
 			raise
 		self.store_credits(response)
+		if send_own_id and str(response["id"]).casefold() != document.guid.casefold():
+			raise BusinessOSError(
+				_(
+					"Business OS stored the document as {0} instead of {1}, so the document link "
+					"would be wrong. Check DUo, then mark the document as uploaded."
+				).format(response["id"], document.guid),
+				response=response,
+			)
 		external_id = document.guid if send_own_id else response["id"]
 		return StorageResult(external_id=external_id, program_code=PROGRAM_CODE, response=response)
 

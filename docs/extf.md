@@ -17,7 +17,11 @@ One Buchungsstapel file per fiscal year in the batch: `EXTF_Buchungsstapel_<clie
 
 When a batch contains bookings for parties with status New, one master data file per fiscal year of the batch is added, `EXTF_Debitoren_Kreditoren_<client number>_<fiscal year start>_<date>.csv`, with the matching WJ-Beginn in its header. Those parties become Created once the batch is exported.
 
-The files are attached to the batch (private) and can be downloaded again at any time; the content is identical. The batch's file field links the first file. EXTF by e-mail additionally sends all files to the client's EXTF address.
+The files are attached to the batch (private) and can be downloaded again at any time; the content is identical. The batch's file field links the first file. EXTF by e-mail additionally sends all files to the client's EXTF address; "Send e-mail again" on the batch repeats it.
+
+## Exported is not imported
+
+The app cannot see whether the tax office imported a file. After the export the responsible people get one "DATEV file ready" notification. Once the import is done, "Confirm import by tax office" on the batch (`datev.dispatch.confirm_import(batch)`) records who confirmed it and when. Until then the status report counts the batch as unconfirmed, and after seven days the daily summary mentions it. An EXTF batch can only be resolved as not delivered, which exports its bookings again.
 
 ## Booking lines
 
@@ -31,4 +35,4 @@ The Beleglink column contains `BEDI "<GUID>"`, that is program code and external
 
 ## Master data import
 
-To match existing accounts without API access, upload the tax office's debtor/creditor export (category 16) with "Match from file" on the client. Personenkonten have one digit more than the Sachkontenlänge: those starting with 1 to 6 count as debtors, those starting with 7 to 9 as creditors.
+To match existing accounts without API access, upload the tax office's debtor/creditor export (category 16) with "Match from file" on the client, before the first bookings are sent. The file's consultant number, client number and account length must match the client. Personenkonten have one digit more than the Sachkontenlänge: those starting with 1 to 6 count as debtors, those starting with 7 to 9 as creditors.

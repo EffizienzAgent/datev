@@ -257,14 +257,80 @@ class TestDocuments(IntegrationTestCase):
 			intake.discard_document("SINV-UPLOADED")
 		self.assertEqual(frappe.db.get_value("DATEV Document", name, "status"), "Uploaded")
 
-	def test_retry_resets_stuck(self):
-		FakeStorage.outcome = ConnectorError("bad request")
+	def test_retry_enqueues_and_reresolves(self):
+		client = make_client(document_type_options=[{"document_type": "Something Else"}])
+		name, _enqueue = upsert(client)
+		self.assertEqual(frappe.db.get_value("DATEV Document", name, "status"), "Stuck")
+		client.append("document_type_options", {"document_type": "Rechnungsausgang"})
+		client.save()
+		with patch("frappe.enqueue") as enqueue:
+			documents.retry(name)
+		doc = frappe.get_doc("DATEV Document", name)
+		self.assertEqual(
+			(doc.status, doc.document_type, doc.attempts, doc.message), ("Pending", "Rechnungsausgang", 0, "")
+		)
+		(call,) = upload_calls(enqueue)
+		self.assertEqual((call.kwargs["name"], call.kwargs["queue"]), (name, "short"))
+		self.assertEqual(FakeStorage.calls, 0)
+		documents.upload(name)
+		self.assertEqual(frappe.db.get_value("DATEV Document", name, "status"), "Uploaded")
+
+	def test_stuck_never_overwrites_uploaded(self):
+		name, _enqueue = upsert(self.client_doc)
+		document = frappe.get_doc("DATEV Document", name)
+		documents.upload(name)
+		documents.mark_stuck(name, "late failure")
+		documents.handle_failure(document, ConnectorError("late failure"))
+		self.assertEqual(
+			frappe.db.get_value("DATEV Document", name, ["status", "external_id", "message"]),
+			("Uploaded", "ID-1", ""),
+		)
+		self.assertFalse(
+			frappe.db.exists("DATEV Event Log", {"reference_name": name, "event": "upload_failed"})
+		)
+
+	def test_mark_uploaded(self):
+		FakeStorage.outcome = ConnectorError("Upload may have reached DATEV.")
 		name, _enqueue = upsert(self.client_doc)
 		documents.upload(name)
-		FakeStorage.outcome = StorageResult(external_id="ID-2", program_code="DUO")
-		documents.retry(name)
+		with self.assertRaises(frappe.ValidationError):
+			documents.mark_uploaded(name, "DUO-ID-7", " ")
+		documents.mark_uploaded(name, "DUO-ID-7", "Found in DUo")
 		doc = frappe.get_doc("DATEV Document", name)
-		self.assertEqual((doc.status, doc.external_id, doc.attempts), ("Uploaded", "ID-2", 0))
+		self.assertEqual(
+			(doc.status, doc.external_id, doc.program_code, doc.message), ("Uploaded", "DUO-ID-7", "BEDI", "")
+		)
+		log = frappe.get_all(
+			"DATEV Event Log", filters={"reference_name": name, "event": "marked_uploaded"}, pluck="message"
+		)
+		self.assertEqual(len(log), 1)
+		self.assertIn("Found in DUo", log[0])
+		with self.assertRaises(frappe.ValidationError):
+			documents.mark_uploaded(name, "DUO-ID-8", "again")
+		FakeStorage.outcome = ConnectorError("bad request")
+		other, _enqueue = upsert(self.client_doc)
+		documents.upload(other)
+		with self.assertRaises(frappe.ValidationError):
+			documents.mark_uploaded(other, "DUO-ID-7", "same ID")
+		with patch("frappe.only_for", side_effect=frappe.PermissionError) as only_for:
+			with self.assertRaises(frappe.PermissionError):
+				documents.mark_uploaded(name, "DUO-ID-8", "again")
+		only_for.assert_called_once_with("DATEV Manager")
+
+	def test_throttle_defers(self):
+		first, _enqueue = upsert(self.client_doc)
+		second, _enqueue = upsert(self.client_doc)
+		other, _enqueue = upsert(make_client())
+		with patch.object(FakeStorage, "min_interval", 5):
+			documents.upload(first)
+			documents.upload(second)
+			documents.upload(other)
+		self.assertEqual(FakeStorage.calls, 2)
+		doc = frappe.get_doc("DATEV Document", second)
+		self.assertEqual((doc.status, doc.attempts), ("Pending", 0))
+		wait = (doc.next_attempt - now_datetime()).total_seconds()
+		self.assertTrue(0 < wait <= 5, wait)
+		self.assertEqual(frappe.db.get_value("DATEV Document", other, "status"), "Uploaded")
 
 	def test_retry_requires_role(self):
 		doc = make_document(self.client_doc, status="Stuck")
@@ -272,3 +338,60 @@ class TestDocuments(IntegrationTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				documents.retry(doc.name)
 		only_for.assert_called_once_with(["DATEV User", "DATEV Manager"])
+
+	def test_drain_uploads_with_spacing(self):
+		names = [upsert(self.client_doc)[0] for _ in range(3)]
+		later, _enqueue = upsert(self.client_doc)
+		frappe.db.set_value("DATEV Document", later, "next_attempt", add_to_date(now_datetime(), hours=1))
+		with (
+			patch.object(FakeStorage, "min_interval", 5),
+			patch("datev.documents.take_slot", return_value=True),
+			patch("datev.documents.time.sleep") as sleep,
+		):
+			documents.drain(self.client_doc.name)
+		self.assertEqual(FakeStorage.calls, 3)
+		self.assertEqual(
+			[frappe.db.get_value("DATEV Document", name, "status") for name in names], ["Uploaded"] * 3
+		)
+		self.assertEqual(frappe.db.get_value("DATEV Document", later, "status"), "Pending")
+		self.assertEqual(sleep.call_count, 2)
+		for call in sleep.call_args_list:
+			self.assertTrue(4 < call.args[0] <= 5, call.args[0])
+
+	def test_intake_burst_enqueues_one_drain_per_client(self):
+		other = make_client()
+		with patch.object(FakeStorage, "min_interval", 5), patch("frappe.enqueue") as enqueue:
+			for client in (self.client_doc, self.client_doc, self.client_doc, other):
+				intake.upsert_document(
+					client.name,
+					f"SINV-{frappe.generate_hash(length=8)}",
+					direction="Outgoing",
+					file_name="invoice.txt",
+					content=b"invoice",
+					document_date="2027-01-05",
+					document_number="RE-1",
+					amount=119,
+				)
+		drains = [call for call in enqueue.call_args_list if call.args == ("datev.documents.drain",)]
+		self.assertEqual(
+			sorted(call.kwargs["client"] for call in drains), sorted([self.client_doc.name, other.name])
+		)
+		for call in drains:
+			self.assertEqual(
+				(
+					call.kwargs["queue"],
+					call.kwargs["job_id"],
+					call.kwargs["deduplicate"],
+					call.kwargs["timeout"],
+				),
+				("long", f"datev-upload-{call.kwargs['client']}", True, 3600),
+			)
+		self.assertEqual(upload_calls(enqueue), [])
+
+	def test_retry_due_enqueues_drain(self):
+		name, _enqueue = upsert(self.client_doc)
+		frappe.db.set_value("DATEV Document", name, "next_attempt", add_to_date(now_datetime(), minutes=-1))
+		with patch.object(FakeStorage, "min_interval", 5), patch("frappe.enqueue") as enqueue:
+			documents.retry_due()
+		self.assertIn(self.client_doc.name, [call.kwargs.get("client") for call in enqueue.call_args_list])
+		self.assertEqual(FakeStorage.calls, 0)

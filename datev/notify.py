@@ -3,6 +3,7 @@ from frappe import _
 from frappe.utils import add_to_date, escape_html, now_datetime, today
 
 from datev import dispatch
+from datev.events import log_event
 
 CLIENT = "DATEV Client"
 BATCH = "DATEV Batch"
@@ -12,7 +13,17 @@ PARTY = "DATEV Party Account"
 MANAGER_ROLE = "DATEV Manager"
 REPORT_LINK = "/app/query-report/DATEV Status"
 SENDING_GRACE_HOURS = 1
-STUCK_FIELDS = ("stuck_documents", "stuck_bookings", "failed_bookings", "parties_to_clarify", "party_errors")
+UNCONFIRMED_GRACE_DAYS = 7
+EXTF_EXPORTS = ("EXTF download", "EXTF e-mail")
+SENT_STATUSES = ("Sent", "Partially Sent")
+STUCK_FIELDS = (
+	"stuck_documents",
+	"stuck_bookings",
+	"failed_bookings",
+	"parties_to_clarify",
+	"party_errors",
+	"unconfirmed_overdue",
+)
 
 
 def enabled_users(**filters) -> list[str]:
@@ -41,6 +52,12 @@ def count(doctype: str, **filters) -> int:
 
 
 def status_counts(client: str, now) -> dict:
+	unconfirmed = {
+		"client": client,
+		"status": ("in", SENT_STATUSES),
+		"export_connector": ("in", EXTF_EXPORTS),
+		"confirmed_on": ("is", "not set"),
+	}
 	return {
 		"transferred_30d": count(
 			BOOKING,
@@ -50,6 +67,16 @@ def status_counts(client: str, now) -> dict:
 		),
 		"awaiting_approval": count(BATCH, client=client, status="Awaiting Approval"),
 		"sending_batches": count(BATCH, client=client, status="Sending"),
+		"failed_batches": count(
+			BATCH,
+			client=client,
+			status=("in", ("Failed", "Partially Sent")),
+			sent_on=(">=", add_to_date(now, days=-30)),
+		),
+		"unconfirmed_batches": count(BATCH, **unconfirmed),
+		"unconfirmed_overdue": count(
+			BATCH, **unconfirmed, sent_on=("<", add_to_date(now, days=-UNCONFIRMED_GRACE_DAYS))
+		),
 		"stuck_bookings": count(BOOKING, client=client, status="Stuck"),
 		"failed_bookings": count(BOOKING, client=client, status="Failed"),
 		"stuck_documents": count(DOCUMENT, client=client, status="Stuck"),
@@ -138,7 +165,8 @@ def notify_client(client, now) -> None:
 	if any(counts[field] for field in STUCK_FIELDS) and once_a_day(client.name, "stuck"):
 		subject = _(
 			"{0}: {1} stuck documents, {2} stuck bookings, {3} failed bookings, "
-			"{4} party accounts to clarify, {5} party accounts with errors"
+			"{4} party accounts to clarify, {5} party accounts with errors, "
+			"{6} EXTF files not confirmed as imported"
 		).format(name, *(counts[field] for field in STUCK_FIELDS))
 		alert(users, subject, link=link)
 
@@ -147,6 +175,16 @@ def notify_client(client, now) -> None:
 			name, client.bos_credits, client.bos_credit_warning
 		)
 		alert(users, subject, link=link)
+
+
+def file_ready(batch) -> None:
+	if frappe.db.exists(
+		"DATEV Event Log", {"reference_doctype": BATCH, "reference_name": batch.name, "event": "file_ready"}
+	):
+		return
+	users = recipients(frappe.get_doc(CLIENT, batch.client))
+	alert(users, _("DATEV file ready: {0}").format(batch.name), document_type=BATCH, document_name=batch.name)
+	log_event(BATCH, batch.name, "file_ready")
 
 
 def check() -> None:

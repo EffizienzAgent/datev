@@ -17,8 +17,8 @@ The install creates two roles:
 
 | Role | Can |
 | --- | --- |
-| DATEV Manager | Edit clients, approve, resolve batches, reset bookings, retry party accounts, fetch connector data |
-| DATEV User | Read, approve batches, hold and release bookings, send bookings now |
+| DATEV Manager | Edit clients, approve, resolve batches, reset bookings, retry and resolve party accounts, mark documents as uploaded, fetch connector data |
+| DATEV User | Read (bookings and batches read only), approve batches, hold and release bookings, send bookings now, retry uploads, confirm EXTF imports, send EXTF e-mails again |
 
 Give the people who approve batches one of them, or name them as responsible user or role on the client. Source systems authenticate with an API key of a user holding one of the roles.
 
@@ -39,8 +39,8 @@ One DATEV Client is one DATEV Mandant. Open **DATEV Client > New**.
 
    ![Dispatch, approval and numbering](images/client-dispatch.png)
 
-4. **Numbering.** Debtor and creditor numbering: `Source system` (preferred number from the delivering system) or `DATEV next available` (needs DATEVconnect as master data connector). "Match debtors/creditors by number" links an existing DATEV account with the same number.
-5. **Tax keys.** One row per tax code of your source system with the BU key. Leave the BU key empty for automatic accounts (for example 8400 with 19 %).
+4. **Numbering.** Debtor and creditor numbering: `Source system` (preferred number from the delivering system) or `DATEV next available` (needs DATEVconnect as master data connector). "Match debtors/creditors by number" links an existing DATEV account with the same number if the name or the VAT ID agrees.
+5. **Tax keys.** One row per tax code of your source system with the BU key. Leave the BU key empty for automatic accounts (for example 8400 with 19 %). Every tax code your source system sends needs a row; a booking with an unknown tax code is rejected.
 6. **Account mappings.** Optional: source account to DATEV account, applied to the contra account on export.
 
 Save. Disabled clients receive documents but upload nothing until they are enabled.
@@ -52,7 +52,7 @@ Before the first batch, match the debtors and creditors that already exist in DA
 - With DATEVconnect: **Match DATEV accounts** on the client.
 - With a master data file: export the debtors/creditors from DATEV (category 16) and use **Match from file**.
 
-Existing accounts are linked by number (if enabled), VAT ID, IBAN or name. Ambiguous or colliding hits become Party Account "To Clarify" and are neither created nor booked until someone decides. The EXTF master data connector requires this import before it creates any account.
+Existing accounts are linked by number (if enabled, and only if name or VAT ID agree), VAT ID, IBAN or name. Ambiguous or colliding hits become Party Account "To Clarify" and are neither created nor booked until someone decides. The file must come from the same consultant number, client number and account length as the client. The EXTF master data connector requires this import before it creates any account, so import the master data before the first bookings are sent.
 
 ![Party account to clarify](images/party-to-clarify.png)
 
@@ -205,23 +205,23 @@ With ERPNext, use the adapter app [datev_erpnext](https://github.com/EffizienzAg
 
   ![Bookings of the batch](images/batch-bookings.png)
 
-- **Hold a booking.** **Hold** on a booking removes it from the batch; it moves to a later batch after **Release**. Only Pending bookings and bookings in a batch that still awaits approval can be held.
+- **Hold a booking.** **Hold** on a booking removes it and the other lines of its document from the batch; they move to a later batch after **Release**. Only Pending bookings and bookings in a batch that still awaits approval can be held. A document always goes out with all its lines.
 
   ![Booking](images/booking-form.png)
 
-- **Send bookings now** on the client builds an extra batch outside the schedule.
-- **Stuck items.** A Stuck booking has a message (document not uploaded, party account not ready, fiscal year locked, ...). Fix the cause; the booking joins the next batch by itself. A Stuck document is retried with backoff (5 min, 30 min, 2 h, 12 h) and after five attempts waits for a manual retry. Check DUo first if the message says the upload may have arrived.
+- **Send bookings now** on the client builds an extra batch outside the schedule. It runs as background job; the batch appears a moment later.
+- **Stuck items.** A Stuck booking has a message (document not uploaded, party account not ready, fiscal year locked, ...). Fix the cause; the booking joins the next batch by itself. A Stuck document is retried with backoff (5 min, 30 min, 2 h, 12 h) and after five attempts waits for **Retry upload**. Check DUo first if the message says the upload may have arrived; if the document is already there, use **Mark as uploaded** with its DUo ID and a reason (DATEV Manager).
 
   ![Documents with a stuck upload](images/documents.png)
 
-- **Party accounts.** Retry a party in "Error" or "To Clarify" with **Retry** (`datev.parties.retry_party`), or enter the number of the existing DATEV account with **Mark resolved**.
+- **Party accounts.** Retry a party in "Error" or "To Clarify" with **Retry** (`datev.parties.retry_party`), or settle it with **Mark resolved** (DATEV Manager): enter the DATEV account number, choose whether the account already existed or was created as new, and give a reason.
 - **Reset a booking.** Only if a transferred or exported booking is known to be missing in DATEV: **Reset to Pending** on the booking, with a reason (`datev.dispatch.reset_booking(booking, reason)`, DATEV Manager).
-- **Uncertain deliveries.** If a DATEVconnect request may have arrived but the answer is missing, the batch stays "Sending" and is never retried automatically. Check in DATEV what arrived, then resolve it on the batch: **Resolve > Arrived in DATEV** or **Not in DATEV** (`datev.dispatch.resolve_batch(batch, delivered)`, DATEV Manager). `delivered=1` marks the bookings as transferred, `delivered=0` returns them to Pending.
-- **Exported batches.** With EXTF connectors the files are attached to the batch and can be downloaded again.
+- **Uncertain deliveries.** If a DATEVconnect request may have arrived but the answer is missing, the batch stays "Sending" and is never retried automatically. Check in DATEV what arrived, then resolve it on the batch: **Resolve > Arrived in DATEV** or **Not in DATEV** (`datev.dispatch.resolve_batch(batch, delivered)`, DATEV Manager). `delivered=1` marks the bookings as transferred, `delivered=0` returns them to Pending. EXTF batches can only be resolved as not delivered.
+- **Exported batches.** With EXTF connectors the files are attached to the batch and can be downloaded again; the responsible people get a "DATEV file ready" notification. Exported is not imported: once the tax office has imported the files, press **Confirm import by tax office** on the batch. Until then the batch counts as unconfirmed in the status report, and after seven days it shows up in the daily summary. With EXTF by e-mail, **Send e-mail again** sends the same files once more.
 
   ![Exported batch](images/batch-exported.png)
 
-- **Notifications.** The responsible user or role is notified once a day per reason: batch awaiting approval, dispatch overdue, stuck items, batch sending for over an hour, Business OS credits low.
+- **Notifications.** The responsible user or role is notified once per batch when a batch awaits approval or an EXTF file is ready, and once a day per reason for: dispatch overdue, stuck items (including EXTF files unconfirmed for more than seven days), batch sending for over an hour, Business OS credits low.
 
 ## Going live checklist
 

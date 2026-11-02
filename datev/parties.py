@@ -117,11 +117,17 @@ def check_last_import(client, party_account) -> bool:
 
 def last_import(client) -> list[RemoteParty]:
 	rows = frappe.parse_json(client.last_party_import or "[]")
-	return [RemoteParty(row["kind"], int(row["account_number"]), row.get("name") or "") for row in rows]
+	return [
+		RemoteParty(row["kind"], int(row["account_number"]), row.get("name") or "", row.get("vat_id"))
+		for row in rows
+	]
 
 
 def record_import(client: str, remote: list[RemoteParty]) -> None:
-	rows = [{"kind": p.kind, "account_number": p.account_number, "name": p.name} for p in remote]
+	rows = [
+		{"kind": p.kind, "account_number": p.account_number, "name": p.name, "vat_id": p.vat_id}
+		for p in remote
+	]
 	frappe.db.set_value(
 		"DATEV Client",
 		client,
@@ -129,7 +135,7 @@ def record_import(client: str, remote: list[RemoteParty]) -> None:
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def retry_party(party_account: str) -> str:
 	frappe.only_for("DATEV Manager")
 	doc = frappe.get_doc(PARTY, party_account, for_update=True)
@@ -146,16 +152,45 @@ def find_remote(remote: list[RemoteParty], kind: str, number: int) -> RemotePart
 	return next((party for party in remote if party.kind == kind and party.account_number == number), None)
 
 
+def agrees(party_account, remote: RemoteParty) -> bool:
+	vat_id = compact(party_account.vat_id)
+	if vat_id and vat_id == compact(remote.vat_id):
+		return True
+	return normalize_name(remote.name) == normalize_name(party_account.party_name)
+
+
+def mismatch_message(party_account, remote: RemoteParty) -> str:
+	return _(
+		"DATEV account {0} exists as {1}, but the party is {2}. Check the account and resolve it manually."
+	).format(remote.account_number, remote.name, party_account.party_name)
+
+
 def link_existing(party_account, remote: RemoteParty) -> bool:
-	if normalize_name(remote.name) == normalize_name(party_account.party_name):
+	if agrees(party_account, remote):
 		set_status(party_account, "Imported", "", "imported")
 		return True
-	message = _("DATEV account {0} already exists as {1}. Check the account and resolve it manually.").format(
-		remote.account_number, remote.name
-	)
 	party_account.account_number = 0
-	set_status(party_account, "To Clarify", message, "to_clarify")
+	set_status(party_account, "To Clarify", mismatch_message(party_account, remote), "to_clarify")
 	return False
+
+
+@frappe.whitelist(methods=["POST"])
+def mark_resolved(party_account: str, account_number: int, status: str, reason: str) -> None:
+	frappe.only_for("DATEV Manager")
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A reason is required to mark a party account resolved."))
+	if status not in SETTLED:
+		frappe.throw(_("A party account can only be resolved as imported or created."))
+	doc = frappe.get_doc(PARTY, party_account, for_update=True)
+	if doc.sync_status != "To Clarify":
+		frappe.throw(_("Only party accounts to clarify can be marked resolved."))
+	doc.update({"account_number": int(account_number), "sync_status": status, "message": ""})
+	doc.save(ignore_permissions=True)
+	message = _("Marked resolved as {0} with DATEV account {1}: {2}").format(
+		_(status), doc.account_number, reason
+	)
+	log_event(PARTY, doc.name, "resolved", message)
 
 
 def set_status(party_account, status: str, message: str, event: str) -> None:
@@ -187,8 +222,10 @@ def import_existing(client: str, remote: list[RemoteParty] | None = None) -> dic
 		order_by="creation",
 	):
 		party_account = frappe.get_doc(PARTY, name)
-		candidates = match_candidates(client_doc, party_account, remote)
-		if not candidates:
+		candidates, mismatch = match_candidates(client_doc, party_account, remote)
+		if mismatch:
+			mark_to_clarify(party_account, mismatch, result)
+		elif not candidates:
 			result["unmatched"] += 1
 		elif len(candidates) > 1:
 			message = _("Several DATEV accounts match: {0}").format(describe(candidates))
@@ -223,12 +260,15 @@ def import_existing(client: str, remote: list[RemoteParty] | None = None) -> dic
 	return result
 
 
-def match_candidates(client, party_account, remote: list[RemoteParty]) -> list[RemoteParty]:
+def match_candidates(client, party_account, remote: list[RemoteParty]) -> tuple[list[RemoteParty], str]:
 	same_kind = [party for party in remote if party.kind == party_account.kind]
 	if client.get(MATCH_BY_NUMBER_FIELDS[party_account.kind]) and party_account.preferred_number:
 		by_number = [p for p in same_kind if p.account_number == party_account.preferred_number]
+		agreeing = [p for p in by_number if agrees(party_account, p)]
+		if agreeing:
+			return agreeing, ""
 		if by_number:
-			return by_number
+			return [], mismatch_message(party_account, by_number[0])
 	for key, normalize in (("vat_id", compact), ("iban", compact), ("party_name", normalize_name)):
 		value = normalize(party_account.get(key))
 		if not value:
@@ -236,8 +276,8 @@ def match_candidates(client, party_account, remote: list[RemoteParty]) -> list[R
 		remote_key = "name" if key == "party_name" else key
 		matches = [p for p in same_kind if normalize(getattr(p, remote_key)) == value]
 		if matches:
-			return matches
-	return []
+			return matches, ""
+	return [], ""
 
 
 def describe(candidates: list[RemoteParty]) -> str:

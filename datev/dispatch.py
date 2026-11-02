@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_to_date, getdate, now_datetime
 
+from datev import notify
 from datev.connectors import registry
 from datev.connectors.base import ConnectorError
 from datev.connectors.datevconnect import clear_fiscal_year_cache
@@ -18,8 +19,17 @@ DOCUMENT = "DATEV Document"
 PARTY = "DATEV Party Account"
 DISPATCH_ROLES = ["DATEV User", "DATEV Manager"]
 LINKED_STATUSES = ("Uploaded", "No Link")
-MANDATORY_FIELDS = ("party_account", "contra_account", "document_field_1", "document_date")
+MANDATORY_FIELDS = (
+	"kind",
+	"debit_credit",
+	"party_account",
+	"contra_account",
+	"document_field_1",
+	"document_date",
+)
 RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
+SENT_STATUSES = ("Sent", "Partially Sent")
+JOB_TIMEOUT = 3600
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
@@ -92,6 +102,7 @@ def collect(client: str) -> str | None:
 		return None
 	clear_fiscal_year_cache()
 	ready = []
+	blocked = {}
 	for name in frappe.get_all(
 		BOOKING,
 		filters={"client": client, "status": ("in", OPEN_BOOKING_STATUSES), "held": 0},
@@ -104,9 +115,10 @@ def collect(client: str) -> str | None:
 		message = preflight(booking)
 		if message:
 			booking.db_set({"status": "Stuck", "message": message})
+			blocked.setdefault(booking.document, booking.line_key)
 		else:
 			ready.append(booking)
-	ready = still_open(client, ready)
+	ready = still_open(client, without_blocked_documents(ready, blocked))
 	if not ready:
 		return None
 
@@ -126,6 +138,29 @@ def collect(client: str) -> str | None:
 	return batch.name
 
 
+def without_blocked_documents(ready: list, blocked: dict) -> list:
+	held = frappe.get_all(
+		BOOKING,
+		filters={
+			"document": ("in", list({booking.document for booking in ready}) or [""]),
+			"status": ("in", OPEN_BOOKING_STATUSES),
+			"held": 1,
+		},
+		fields=["document", "line_key"],
+		order_by="creation asc",
+	)
+	for row in held:
+		blocked.setdefault(row.document, row.line_key)
+	result = []
+	for booking in ready:
+		if booking.document in blocked:
+			message = _("Waiting for line {0} of this document").format(blocked[booking.document])
+			booking.db_set({"status": "Pending", "message": message})
+		else:
+			result.append(booking)
+	return result
+
+
 def still_open(client: str, bookings: list) -> list:
 	frappe.db.get_value(CLIENT, client, "name", for_update=True)
 	result = []
@@ -136,11 +171,21 @@ def still_open(client: str, bookings: list) -> list:
 	return result
 
 
-def enqueue_send(batch: str) -> None:
-	frappe.enqueue("datev.dispatch.send", queue="long", enqueue_after_commit=True, batch=batch)
+def job(kind: str, name: str) -> dict:
+	return {"queue": "long", "timeout": JOB_TIMEOUT, "job_id": f"datev-{kind}-{name}", "deduplicate": True}
 
 
-@frappe.whitelist()
+def enqueue_send(batch: str, after_commit: bool = True) -> None:
+	extra = {"enqueue_after_commit": True} if after_commit else {}
+	frappe.enqueue("datev.dispatch.send", **job("send", batch), **extra, batch=batch)
+
+
+def enqueue_client(client: str, after_commit: bool = True) -> None:
+	extra = {"enqueue_after_commit": True} if after_commit else {}
+	frappe.enqueue("datev.dispatch.process_client", **job("client", client), **extra, client=client)
+
+
+@frappe.whitelist(methods=["POST"])
 def approve(batch: str) -> None:
 	client = frappe.db.get_value(BATCH, batch, "client")
 	if not client:
@@ -168,25 +213,53 @@ def check_approver(client) -> None:
 	frappe.throw(_("You are not allowed to approve batches of this client."), frappe.PermissionError)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def hold(booking: str, held: bool = True) -> None:
 	frappe.only_for(DISPATCH_ROLES)
 	held = frappe.utils.sbool(held)
 	doc = frappe.get_doc(BOOKING, booking, for_update=True)
-	if not held and doc.status in OPEN_BOOKING_STATUSES:
-		doc.db_set("held", 0)
+	if not held:
+		if doc.status not in OPEN_BOOKING_STATUSES:
+			frappe.throw(_("Booking {0} cannot be held.").format(booking))
+		for sibling in siblings(doc):
+			if sibling.status in OPEN_BOOKING_STATUSES and sibling.held:
+				sibling.db_set("held", 0)
 		return
-	if held and doc.status == "Pending":
-		doc.db_set("held", 1)
-		return
-	batch = doc.batch
-	if not held or doc.status != "Batched" or not batch:
+	if doc.status == "Batched" and doc.batch:
+		if frappe.db.get_value(BATCH, doc.batch, "status", for_update=True) != "Awaiting Approval":
+			frappe.throw(_("Booking {0} is in a batch that is no longer awaiting approval.").format(booking))
+	elif doc.status != "Pending":
 		frappe.throw(_("Booking {0} cannot be held.").format(booking))
-	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Awaiting Approval":
-		frappe.throw(_("Booking {0} is in a batch that is no longer awaiting approval.").format(booking))
-	doc.db_set({"status": "Pending", "held": 1, "batch": None})
-	if not frappe.db.exists(BOOKING, {"batch": batch}):
-		frappe.delete_doc(BATCH, batch, ignore_permissions=True)
+
+	lines = siblings(doc)
+	for sibling in lines:
+		if sibling.status == "Batched" and sibling.batch:
+			if frappe.db.get_value(BATCH, sibling.batch, "status") != "Awaiting Approval":
+				frappe.throw(
+					_(
+						"Line {0} of this document is in batch {1}, which is no longer awaiting approval."
+					).format(sibling.line_key, sibling.batch)
+				)
+	batches = set()
+	for sibling in lines:
+		if sibling.status in OPEN_BOOKING_STATUSES:
+			sibling.db_set("held", 1)
+		elif sibling.batch and frappe.db.get_value(BATCH, sibling.batch, "status") == "Awaiting Approval":
+			batches.add(sibling.batch)
+			sibling.db_set({"status": "Pending", "held": 1, "batch": None})
+	for batch in batches:
+		if not frappe.db.exists(BOOKING, {"batch": batch}):
+			frappe.delete_doc(BATCH, batch, ignore_permissions=True)
+
+
+def siblings(doc) -> list:
+	names = frappe.get_all(
+		BOOKING,
+		filters={"document": doc.document, "status": ("in", (*OPEN_BOOKING_STATUSES, "Batched"))},
+		pluck="name",
+		order_by="creation asc",
+	)
+	return [frappe.get_doc(BOOKING, name, for_update=True) for name in names]
 
 
 def send(batch: str) -> None:
@@ -273,6 +346,8 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 
 	mark_parties_created(sent, final_status)
 	log_event(BATCH, batch, event, message, result.response)
+	if sent and final_status == "Exported":
+		notify.file_ready(frappe.get_doc(BATCH, batch))
 
 
 def mark_parties_created(bookings: list, final_status: str) -> None:
@@ -284,16 +359,21 @@ def mark_parties_created(bookings: list, final_status: str) -> None:
 			set_status(party_account, "Created", "", "created")
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def resolve_batch(batch: str, delivered: bool) -> None:
 	frappe.only_for("DATEV Manager")
 	delivered = frappe.utils.sbool(delivered)
 	if frappe.db.get_value(BATCH, batch, "status", for_update=True) != "Sending":
 		frappe.throw(_("Only batches that are still sending can be resolved."))
 	batch_doc = frappe.get_doc(BATCH, batch)
-	final_status = registry.get_export(
-		frappe.get_doc(CLIENT, batch_doc.client), batch_doc.export_connector
-	).final_status
+	connector = export_connector(batch_doc)
+	final_status = connector.final_status
+	if delivered and not connector.remote:
+		frappe.throw(
+			_(
+				"Files are not delivered to DATEV directly. Mark the batch as not delivered to export it again."
+			)
+		)
 	bookings = batched(batch)
 	if delivered:
 		for booking in bookings:
@@ -309,7 +389,34 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 	log_event(BATCH, batch, event)
 
 
-@frappe.whitelist()
+def export_connector(batch_doc):
+	return registry.get_export(frappe.get_doc(CLIENT, batch_doc.client), batch_doc.export_connector)
+
+
+@frappe.whitelist(methods=["POST"])
+def confirm_import(batch: str) -> None:
+	frappe.only_for(DISPATCH_ROLES)
+	batch_doc = frappe.get_doc(BATCH, batch, for_update=True)
+	if batch_doc.status not in SENT_STATUSES or export_connector(batch_doc).remote:
+		frappe.throw(_("Only exported EXTF batches can be confirmed as imported."))
+	if batch_doc.confirmed_on:
+		return
+	frappe.db.set_value(BATCH, batch, {"confirmed_on": now_datetime(), "confirmed_by": frappe.session.user})
+	log_event(BATCH, batch, "import_confirmed")
+
+
+@frappe.whitelist(methods=["POST"])
+def resend_extf_email(batch: str) -> None:
+	frappe.only_for(DISPATCH_ROLES)
+	batch_doc = frappe.get_doc(BATCH, batch)
+	resend = getattr(export_connector(batch_doc), "resend", None)
+	if batch_doc.status not in SENT_STATUSES or not resend:
+		frappe.throw(_("Only exported batches of the EXTF e-mail connector can be sent again."))
+	resend(batch_doc)
+	log_event(BATCH, batch, "resent")
+
+
+@frappe.whitelist(methods=["POST"])
 def reset_booking(booking: str, reason: str) -> None:
 	frappe.only_for("DATEV Manager")
 	reason = (reason or "").strip()
@@ -328,28 +435,35 @@ def run() -> None:
 	for client in frappe.get_all(CLIENT, filters={"enabled": 1}, pluck="name"):
 		try:
 			if is_due(frappe.get_doc(CLIENT, client), now):
-				collect(client)
-			frappe.db.commit()
+				enqueue_client(client, after_commit=False)
 		except Exception:
-			frappe.db.rollback()
 			frappe.log_error(
 				title="DATEV booking collection failed", reference_doctype=CLIENT, reference_name=client
 			)
-
 	for batch in frappe.get_all(BATCH, filters={"status": "Approved"}, pluck="name", order_by="creation asc"):
 		try:
-			send(batch)
+			enqueue_send(batch, after_commit=False)
 		except Exception:
-			frappe.db.rollback()
 			frappe.log_error(
 				title="DATEV batch dispatch failed", reference_doctype=BATCH, reference_name=batch
 			)
 
 
-@frappe.whitelist()
-def send_now(client: str) -> str | None:
+def process_client(client: str) -> None:
+	try:
+		batch = collect(client)
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		frappe.log_error(
+			title="DATEV booking collection failed", reference_doctype=CLIENT, reference_name=client
+		)
+		raise
+	if batch and frappe.db.get_value(BATCH, batch, "status") == "Approved":
+		send(batch)
+
+
+@frappe.whitelist(methods=["POST"])
+def send_now(client: str) -> None:
 	frappe.only_for(DISPATCH_ROLES)
-	batch = collect(client)
-	if batch:
-		enqueue_send(batch)
-	return batch
+	enqueue_client(client)

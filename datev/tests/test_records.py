@@ -20,6 +20,12 @@ class TestRecords(IntegrationTestCase):
 		other = make_document(self.client)
 		make_booking(other, self.party, line_key="1")
 
+	def test_kind_and_side_required(self):
+		for field in ("kind", "debit_credit"):
+			with self.subTest(field=field), self.assertRaises(frappe.MandatoryError):
+				make_booking(self.document, self.party, line_key=field, **{field: None})
+			self.assertTrue(frappe.get_meta("DATEV Booking").get_field(field).reqd)
+
 	def test_booking_amount_positive(self):
 		for amount in (0, -5):
 			with self.assertRaises(frappe.ValidationError):
@@ -81,6 +87,13 @@ class TestRecords(IntegrationTestCase):
 		self.assertTrue(meta.in_create)
 		for permission in meta.permissions:
 			self.assertFalse(permission.write or permission.delete)
+
+	def test_event_log_label(self):
+		log_event("DATEV Client", self.client.name, "import_confirmed")
+		self.assertEqual(frappe.get_last_doc("DATEV Event Log").label, "Import confirmed")
+		log_event("DATEV Client", self.client.name, "custom_event")
+		self.assertEqual(frappe.get_last_doc("DATEV Event Log").label, "custom_event")
+		self.assertEqual(frappe.get_meta("DATEV Event Log").title_field, "label")
 
 	def test_event_log_truncates_response(self):
 		log_event("DATEV Client", self.client.name, "big", response="x" * 30000)

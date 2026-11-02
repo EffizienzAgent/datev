@@ -6,8 +6,8 @@ from frappe.utils import getdate
 from datev.fiscal import fiscal_year_id
 from datev.protect import reject_manual_changes
 
-PROTECTED = ("status", "batch", "amount", "party_account", "contra_account", "document")
-STATE = ("status", "batch")
+PROTECTED = ("status", "batch", "amount", "party_account", "contra_account", "document", "held")
+STATE = ("status", "batch", "held")
 PARTY_KINDS = {"Outgoing Invoice": "Debtor", "Incoming Invoice": "Creditor"}
 
 

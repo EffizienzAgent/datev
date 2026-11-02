@@ -25,12 +25,10 @@ frappe.ui.form.on("DATEV Client", {
 	},
 
 	send_now(frm) {
-		frappe.call("datev.dispatch.send_now", { client: frm.doc.name }).then((r) => {
+		frappe.call("datev.dispatch.send_now", { client: frm.doc.name }).then(() => {
 			frappe.show_alert({
-				message: r.message
-					? __("Batch {0} created.", [r.message])
-					: __("No bookings are ready to send."),
-				indicator: r.message ? "green" : "orange",
+				message: __("Dispatch started in the background. Check the batches in a moment."),
+				indicator: "green",
 			});
 		});
 	},

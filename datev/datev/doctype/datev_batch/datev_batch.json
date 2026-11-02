@@ -22,7 +22,6 @@
   {
    "role": "DATEV User",
    "read": 1,
-   "write": 1,
    "report": 1
   }
  ],
@@ -36,6 +35,8 @@
   "failed_count",
   "file",
   "notified_on",
+  "confirmed_on",
+  "confirmed_by",
   "message"
  ],
  "fields": [
@@ -100,9 +101,23 @@
    "read_only": 1
   },
   {
+   "fieldname": "confirmed_on",
+   "fieldtype": "Datetime",
+   "label": "Import Confirmed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_by",
+   "fieldtype": "Link",
+   "label": "Import Confirmed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
    "fieldname": "message",
    "fieldtype": "Small Text",
    "label": "Message"
   }
- ]
+ ],
+ "track_changes": 1
 }
