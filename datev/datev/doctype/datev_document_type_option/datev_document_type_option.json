@@ -1,0 +1,32 @@
+{
+ "docstatus": 0,
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "DATEV",
+ "custom": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "name": "DATEV Document Type Option",
+ "istable": 1,
+ "editable_grid": 1,
+ "field_order": [
+  "document_type",
+  "category"
+ ],
+ "fields": [
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Data",
+   "label": "Document Type",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "label": "Category",
+   "in_list_view": 1
+  }
+ ]
+}
