@@ -11,7 +11,7 @@
 | DATEV Party Account | Debtor or creditor account per client and party, with number and sync status |
 | DATEV Event Log | What happened to a document, booking, batch or party account, with a translated label, and the connector response (never credentials) |
 
-Account mappings and tax keys (tax code to BU key) are tables on the client. An empty BU key means an automatic account. A booking delivered with a tax code that has no row in the tax keys is rejected, so no booking goes out with a guessed BU key; add a row with an empty BU key for automatic accounts.
+Account mappings and tax keys (tax code and direction to BU key) are tables on the client. An empty BU key means an automatic account. A tax-key row applies to `Outgoing` invoices, `Incoming` invoices or `Any` booking; a row for the booking's direction wins over the `Any` row, and payments only use `Any` rows. This lets a source system that shares one tax code between sales and purchases map it to different BU keys, for example an empty key on automatic revenue accounts and 9 for 19 % input tax on normal expense accounts. A booking delivered with a tax code that has no row in the tax keys is rejected, so no booking goes out with a guessed BU key; add a row with an empty BU key for automatic accounts.
 
 Booking, batch, party account and client track their changes (version history).
 

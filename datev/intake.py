@@ -13,6 +13,7 @@ BOOKING = "DATEV Booking"
 BATCH = "DATEV Batch"
 OPEN_BOOKING_STATUSES = ("Pending", "Stuck", "Failed")
 INVOICE_KINDS = ("Outgoing Invoice", "Incoming Invoice")
+TAX_KEY_DIRECTIONS = {"Outgoing Invoice": "Outgoing", "Incoming Invoice": "Incoming"}
 
 
 def upsert_document(
@@ -193,7 +194,14 @@ def add_booking(
 	if source.status == "Not Required" and kind in INVOICE_KINDS:
 		frappe.throw(_("Document {0} has no file and takes no invoice bookings.").format(document))
 	if tax_code:
-		mapped = tax_key(source.client, tax_code)
+		mapped = tax_key(source.client, tax_code, TAX_KEY_DIRECTIONS.get(kind, "Any"))
+		if mapped is None:
+			frappe.throw(
+				_(
+					"Tax code {0} has no row in the DATEV Client's tax keys. "
+					"Add it; leave the BU key empty for automatic accounts."
+				).format(tax_code)
+			)
 		bu_key = bu_key or mapped
 	booking = internal(frappe.get_doc(BOOKING, existing.name) if existing else frappe.new_doc(BOOKING))
 	booking.update(
@@ -222,21 +230,19 @@ def add_booking(
 	return booking.name
 
 
-def tax_key(client: str, tax_code: str) -> str:
-	row = frappe.db.get_value(
+def tax_key(client: str, tax_code: str, direction: str = "Any") -> str | None:
+	rows = frappe.get_all(
 		"DATEV Tax Key Rule",
-		{"parent": client, "parenttype": "DATEV Client", "tax_code": tax_code},
-		"bu_key",
-		as_dict=True,
+		filters={
+			"parent": client,
+			"parenttype": "DATEV Client",
+			"parentfield": "tax_keys",
+			"tax_code": tax_code,
+		},
+		fields=["direction", "bu_key"],
 	)
-	if row is None:
-		frappe.throw(
-			_(
-				"Tax code {0} has no row in the DATEV Client's tax keys. "
-				"Add it; leave the BU key empty for automatic accounts."
-			).format(tax_code)
-		)
-	return row.bu_key or ""
+	keys = {row.direction or "Any": row.bu_key or "" for row in rows}
+	return keys.get(direction, keys.get("Any"))
 
 
 def ensure_party_account(

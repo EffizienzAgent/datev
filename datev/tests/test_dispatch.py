@@ -157,6 +157,54 @@ class TestDispatch(IntegrationTestCase):
 			tax_code=tax_code,
 		)
 
+	def test_tax_key_prefers_direction(self):
+		client = make_client(
+			tax_keys=[
+				{"tax_code": "VAT19", "direction": "Incoming", "bu_key": "9"},
+				{"tax_code": "VAT19", "direction": "Outgoing", "bu_key": ""},
+				{"tax_code": "VAT7", "bu_key": "8"},
+				{"tax_code": "VAT7", "direction": "Incoming", "bu_key": "2"},
+				{"tax_code": "OUT", "direction": "Outgoing", "bu_key": "3"},
+			]
+		).name
+		self.assertEqual(intake.tax_key(client, "VAT19", "Incoming"), "9")
+		self.assertEqual(intake.tax_key(client, "VAT19", "Outgoing"), "")
+		self.assertIsNone(intake.tax_key(client, "VAT19", "Any"))
+		self.assertEqual(intake.tax_key(client, "VAT7", "Outgoing"), "8")
+		self.assertEqual(intake.tax_key(client, "VAT7", "Incoming"), "2")
+		self.assertEqual(intake.tax_key(client, "VAT7", "Any"), "8")
+		self.assertIsNone(intake.tax_key(client, "OUT", "Incoming"))
+		self.assertIsNone(intake.tax_key(client, "MISSING", "Outgoing"))
+
+	def test_booking_kind_selects_tax_key_direction(self):
+		client = make_client(
+			tax_keys=[
+				{"tax_code": "VAT19", "direction": "Outgoing", "bu_key": ""},
+				{"tax_code": "VAT19", "direction": "Incoming", "bu_key": "9"},
+			]
+		)
+		debtor = make_party_account(client, preferred_number=10001)
+		creditor = make_party_account(client, "Creditor", preferred_number=70001)
+		document = self.document(client)
+
+		def add(line_key, kind, **values):
+			name = intake.add_booking(
+				document.name,
+				line_key,
+				kind=kind,
+				contra_account=4400,
+				amount=119,
+				debit_credit="S",
+				tax_code="VAT19",
+				**values,
+			)
+			return frappe.db.get_value("DATEV Booking", name, "bu_key") or ""
+
+		self.assertEqual(add("1", "Outgoing Invoice", party_account=debtor.name), "")
+		self.assertEqual(add("2", "Incoming Invoice", party_account=creditor.name), "9")
+		with self.assertRaises(frappe.ValidationError):
+			add("3", "Payment", account=1200)
+
 	def test_missing_tax_key_blocks(self):
 		with self.assertRaises(frappe.ValidationError) as raised:
 			self.tax_key_booking([{"tax_code": "DE19", "bu_key": "3"}], "DE7")

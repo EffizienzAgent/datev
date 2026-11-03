@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-03 09:03+0000\n"
+"POT-Creation-Date: 2026-11-03 09:48+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -112,7 +112,9 @@ msgstr "Der Betrag muss größer als null sein."
 
 #. Option for the 'Is Return' (Select) field in DocType 'DATEV Document Type
 #. Rule'
+#. Option for the 'Direction' (Select) field in DocType 'DATEV Tax Key Rule'
 #: datev/datev/doctype/datev_document_type_rule/datev_document_type_rule.json:38
+#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:30
 msgid "Any"
 msgstr "Beliebig"
 
@@ -162,7 +164,7 @@ msgstr "Wartet auf Freigabe"
 #. Label of the bu_key (Data) field in DocType 'DATEV Booking'
 #. Label of the bu_key (Data) field in DocType 'DATEV Tax Key Rule'
 #: datev/datev/doctype/datev_booking/datev_booking.json:127
-#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:28
+#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:37
 msgid "BU Key"
 msgstr "BU-Schlüssel"
 
@@ -227,7 +229,7 @@ msgstr "Buchung {0} hat keine Personenkontonummer."
 msgid "Booking {0} is in a batch that is no longer awaiting approval."
 msgstr "Buchung {0} liegt in einem Buchungsstapel, der nicht mehr auf Freigabe wartet."
 
-#: datev/intake.py:124
+#: datev/intake.py:125
 #, python-brace-format
 msgid "Bookings of document {0} are batched or already in DATEV. Discard only its open bookings and add reversal lines instead."
 msgstr "Buchungen von Beleg {0} sind bereits in einem Buchungsstapel oder in DATEV. Verwerfen Sie nur die offenen Buchungen und fügen Sie stattdessen Generalumkehr-Buchungen hinzu."
@@ -554,8 +556,10 @@ msgstr "Abhängig von Beleg"
 
 #. Label of the direction (Select) field in DocType 'DATEV Document'
 #. Label of the direction (Select) field in DocType 'DATEV Document Type Rule'
+#. Label of the direction (Select) field in DocType 'DATEV Tax Key Rule'
 #: datev/datev/doctype/datev_document/datev_document.json:70
 #: datev/datev/doctype/datev_document_type_rule/datev_document_type_rule.json:23
+#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:29
 msgid "Direction"
 msgstr "Richtung"
 
@@ -656,7 +660,7 @@ msgstr "Belegtypen"
 msgid "Document type {0} is not defined for this client."
 msgstr "Der Belegtyp {0} ist für diesen Mandanten nicht definiert."
 
-#: datev/intake.py:45
+#: datev/intake.py:46
 #, python-brace-format
 msgid "Document {0} already has a file. Submit it again with its file."
 msgstr "Beleg {0} hat bereits eine Datei. Übermitteln Sie ihn erneut mit seiner Datei."
@@ -666,12 +670,12 @@ msgstr "Beleg {0} hat bereits eine Datei. Übermitteln Sie ihn erneut mit seiner
 msgid "Document {0} has no document link, which this client requires."
 msgstr "Beleg {0} hat keinen Beleglink, den dieser Mandant verlangt."
 
-#: datev/intake.py:194
+#: datev/intake.py:195
 #, python-brace-format
 msgid "Document {0} has no file and takes no invoice bookings."
 msgstr "Beleg {0} hat keine Datei und nimmt keine Rechnungsbuchungen an."
 
-#: datev/intake.py:192
+#: datev/intake.py:193
 #, python-brace-format
 msgid "Document {0} is discarded and takes no bookings."
 msgstr "Beleg {0} wurde verworfen und nimmt keine Buchungen an."
@@ -917,8 +921,10 @@ msgstr "Importierte oder angelegte Personenkonten benötigen eine Kontonummer."
 #. Option for the 'Direction' (Select) field in DocType 'DATEV Document'
 #. Option for the 'Direction' (Select) field in DocType 'DATEV Document Type
 #. Rule'
+#. Option for the 'Direction' (Select) field in DocType 'DATEV Tax Key Rule'
 #: datev/datev/doctype/datev_document/datev_document.json:71
 #: datev/datev/doctype/datev_document_type_rule/datev_document_type_rule.json:24
+#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:30
 msgid "Incoming"
 msgstr "Eingang"
 
@@ -983,7 +989,7 @@ msgstr "Zeilenschlüssel"
 msgid "Line key {0} already exists for this document."
 msgstr "Der Zeilenschlüssel {0} existiert für diesen Beleg bereits."
 
-#: datev/intake.py:145
+#: datev/intake.py:146
 #, python-brace-format
 msgid "Line {0} is in batch {1}, which is being sent. Try again once the batch is done."
 msgstr "Zeile {0} ist in Buchungsstapel {1}, der gerade übertragen wird. Versuchen Sie es erneut, wenn der Buchungsstapel abgeschlossen ist."
@@ -1140,7 +1146,7 @@ msgstr "Ohne Beleglink"
 msgid "No bookings left to send."
 msgstr "Es sind keine Buchungen mehr zu senden."
 
-#: datev/api.py:154 datev/intake.py:110
+#: datev/api.py:154 datev/intake.py:111
 #, python-brace-format
 msgid "No document with source key {0}."
 msgstr "Kein Beleg mit dem Quellschlüssel {0}."
@@ -1175,7 +1181,7 @@ msgstr "Die Nummernvergabe durch DATEV erfordert den Stammdaten-Konnektor DATEVc
 msgid "Only batches that are still sending can be resolved."
 msgstr "Nur Buchungsstapel, die noch gesendet werden, können geklärt werden."
 
-#: datev/intake.py:42
+#: datev/intake.py:43
 msgid "Only documents with direction Other can be submitted without a file."
 msgstr "Nur Belege mit der Richtung Sonstige können ohne Datei übermittelt werden."
 
@@ -1222,8 +1228,10 @@ msgstr "Andere Buchungen hängen von diesem Beleg ab, daher nimmt er nur Rechnun
 #. Option for the 'Direction' (Select) field in DocType 'DATEV Document'
 #. Option for the 'Direction' (Select) field in DocType 'DATEV Document Type
 #. Rule'
+#. Option for the 'Direction' (Select) field in DocType 'DATEV Tax Key Rule'
 #: datev/datev/doctype/datev_document/datev_document.json:71
 #: datev/datev/doctype/datev_document_type_rule/datev_document_type_rule.json:24
+#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:30
 msgid "Outgoing"
 msgstr "Ausgang"
 
@@ -1433,7 +1441,12 @@ msgstr "Kehrt eine frühere Buchung in DATEV um (Generalumkehr)"
 msgid "Row {0}: BU key must have at most four digits."
 msgstr "Zeile {0}: Der BU-Schlüssel darf höchstens vier Ziffern haben."
 
-#: datev/datev/doctype/datev_client/datev_client.py:76
+#: datev/datev/doctype/datev_client/datev_client.py:70
+#, python-brace-format
+msgid "Row {0}: Tax code {1} is listed more than once for direction {2}."
+msgstr "Zeile {0}: Steuerkennzeichen {1} ist für Richtung {2} mehrfach aufgeführt."
+
+#: datev/datev/doctype/datev_client/datev_client.py:85
 #, python-brace-format
 msgid "Row {0}: {1} {2} is listed more than once."
 msgstr "Zeile {0}: {1} {2} ist mehrfach aufgeführt."
@@ -1527,7 +1540,7 @@ msgstr "Quellschlüssel"
 msgid "Source Name"
 msgstr "Quellbeleg"
 
-#: datev/datev/doctype/datev_client/datev_client.py:68
+#: datev/datev/doctype/datev_client/datev_client.py:77
 msgid "Source account"
 msgstr "Quellkonto"
 
@@ -1577,7 +1590,7 @@ msgid "Sync Status"
 msgstr "Abgleichstatus"
 
 #. Label of the tax_code (Data) field in DocType 'DATEV Tax Key Rule'
-#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:21
+#: datev/datev/doctype/datev_tax_key_rule/datev_tax_key_rule.json:22
 msgid "Tax Code"
 msgstr "Steuerkennzeichen"
 
@@ -1591,11 +1604,7 @@ msgstr "Steuerschlüssel"
 msgid "Tax Rate"
 msgstr "Steuersatz"
 
-#: datev/datev/doctype/datev_client/datev_client.py:65
-msgid "Tax code"
-msgstr "Steuerkennzeichen"
-
-#: datev/intake.py:235
+#: datev/intake.py:201
 #, python-brace-format
 msgid "Tax code {0} has no row in the DATEV Client's tax keys. Add it; leave the BU key empty for automatic accounts."
 msgstr "Steuerkennzeichen {0} hat keine Zeile in den Steuerschlüsseln des DATEV-Mandanten. Ergänzen Sie sie; lassen Sie den BU-Schlüssel bei Automatikkonten leer."
@@ -1627,7 +1636,7 @@ msgstr "Die EXTF-Dateien des DATEV-Buchungsstapels {0} sind angehängt."
 msgid "The EXTF master data connector requires an EXTF export connector."
 msgstr "Der EXTF-Stammdaten-Konnektor erfordert einen EXTF-Export-Konnektor."
 
-#: datev/intake.py:118
+#: datev/intake.py:119
 msgid "The document is already in DATEV. Create a cancellation invoice instead."
 msgstr "Der Beleg ist bereits in DATEV. Erstellen Sie stattdessen eine Stornorechnung."
 
@@ -1639,12 +1648,12 @@ msgstr "Der Export-Konnektor hat kein Ergebnis zurückgegeben."
 msgid "The file content is not valid base64."
 msgstr "Der Dateiinhalt ist kein gültiges Base64."
 
-#: datev/datev/doctype/datev_client/datev_client.py:135
+#: datev/datev/doctype/datev_client/datev_client.py:144
 #, python-brace-format
 msgid "The file is for consultant {0}, client {1}, account length {2}, but this DATEV Client is consultant {3}, client {4}, account length {5}."
 msgstr "Die Datei gehört zu Beraternummer {0}, Mandantennummer {1}, Sachkontenlänge {2}, dieser DATEV-Mandant hat aber Beraternummer {3}, Mandantennummer {4}, Sachkontenlänge {5}."
 
-#: datev/intake.py:37
+#: datev/intake.py:38
 #, python-brace-format
 msgid "The source key {0} already belongs to another client."
 msgstr "Der Quellschlüssel {0} gehört bereits zu einem anderen Mandanten."
