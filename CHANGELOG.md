@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/EffizienzAgent/datev/compare/v0.3.1...v0.3.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* tax keys per direction ([#9](https://github.com/EffizienzAgent/datev/issues/9)) ([45cc626](https://github.com/EffizienzAgent/datev/commit/45cc62653ed1dd72ab5209dc6249a5a9f26eb081))
+
 ## [0.3.1](https://github.com/EffizienzAgent/datev/compare/v0.3.0...v0.3.1) (2026-11-03)
 
 
