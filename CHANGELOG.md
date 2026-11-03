@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/EffizienzAgent/datev/compare/v0.2.0...v0.3.0) (2026-11-03)
+
+
+### Features
+
+* app icon in EffizienzAgent style ([#4](https://github.com/EffizienzAgent/datev/issues/4)) ([b1e38fa](https://github.com/EffizienzAgent/datev/commit/b1e38fa9e02404dea5d4560b3ca3ad19e1162577))
+* payments in the core (v0.3) ([#6](https://github.com/EffizienzAgent/datev/issues/6)) ([9ccace7](https://github.com/EffizienzAgent/datev/commit/9ccace70fe8c92530dfb9924eb564a8ec7b97fe2))
+
+
+### Documentation
+
+* draft payments design, drop local references from plans ([bc0cd07](https://github.com/EffizienzAgent/datev/commit/bc0cd070d5885883edac512ecafa8ee2ae26f6ab))
+* payments and incoming invoices designs ([1808ad8](https://github.com/EffizienzAgent/datev/commit/1808ad81be44d1fd01eecfd2595803167e04c9e3))
+
 ## [0.2.0](https://github.com/EffizienzAgent/datev/compare/v0.1.0...v0.2.0) (2026-11-02)
 
 
