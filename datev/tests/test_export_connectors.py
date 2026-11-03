@@ -8,7 +8,12 @@ from urllib3.exceptions import MaxRetryError, NewConnectionError
 from datev import dispatch, intake, notify
 from datev.clients.datevconnect import DATEVconnectError
 from datev.connectors.base import ConnectorError
-from datev.connectors.datevconnect import DATEVconnectExport, DATEVconnectMasterData, proposal_item
+from datev.connectors.datevconnect import (
+	DATEVconnectExport,
+	DATEVconnectMasterData,
+	proposal_item,
+	sequence_record,
+)
 from datev.connectors.extf import ExtfDownloadExport, ExtfEmailExport, ExtfMasterData
 from datev.tests.factories import make_booking, make_client, make_document, make_party_account
 from datev.tests.test_datevconnect_client import fake_response
@@ -103,6 +108,41 @@ class TestProposalItem(IntegrationTestCase):
 		booking = make_booking(document, party, contra_account=84000)
 		item = proposal_item(booking, document, party, client)
 		self.assertEqual((item["debitor_account_number"], item["account_number"]), (100001000, 84000000))
+
+
+class TestSequenceRecord(IntegrationTestCase):
+	def setUp(self):
+		self.client = dc_client(account_mappings=[{"source_account": 8400, "datev_account": 4400}])
+
+	def test_general_reversal_datevconnect_item(self):
+		document = make_document(self.client, status="Not Required", direction="Other")
+		booking = make_booking(
+			document,
+			None,
+			kind="Payment",
+			account=8400,
+			contra_account=1800,
+			debit_credit="H",
+			general_reversal=1,
+			posting_text="Storno fee",
+			document_field_1="RE-9",
+		)
+		self.assertEqual(
+			sequence_record(booking, document, None, self.client),
+			{
+				"account_number": 44000000,
+				"contra_account_number": 18000000,
+				"amount": 119.0,
+				"debit_credit_identifier": "H",
+				"date": "2027-01-05T00:00:00+01:00",
+				"document_field1": "RE-9",
+				"posting_description": "Storno fee",
+				"currency_code": "EUR",
+				"general_reversal": True,
+			},
+		)
+		booking.general_reversal = 0
+		self.assertNotIn("general_reversal", sequence_record(booking, document, None, self.client))
 
 
 class TestDATEVconnectExport(IntegrationTestCase):

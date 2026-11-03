@@ -728,6 +728,51 @@ class TestDispatch(IntegrationTestCase):
 				)
 				frappe.delete_doc("DATEV Booking", payment)
 
+	def test_reversal_lines_once(self):
+		document = self.document(status="Not Required", external_id=None, direction="Other")
+		original = self.payment(None, document=document)
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.status(original), "Exported")
+
+		reversal = self.payment(None, "storno:1", document=document, general_reversal=1)
+		self.assertNotEqual(reversal, original)
+		self.assertEqual(self.payment(None, "storno:1", document=document, general_reversal=1), reversal)
+		batch = dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.get_all("DATEV Booking", {"batch": batch}, pluck="name"), [reversal])
+		dispatch.send(batch)
+		self.assertEqual(self.payment(None, "storno:1", document=document, general_reversal=1), reversal)
+		self.assertEqual(frappe.db.count("DATEV Booking", {"document": document.name}), 2)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", reversal, "general_reversal"), 1)
+		self.assertEqual(FakeExport.calls, [[original], [reversal]])
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+
+	def test_discard_open_bookings_blocks_batched(self):
+		self.client_doc.db_set("approval_required", 1)
+		document = self.document(status="Not Required", external_id=None, direction="Other")
+		sent = self.payment(None, document=document)
+		first = dispatch.collect(self.client_doc.name)
+		dispatch.approve(first)
+		dispatch.send(first)
+		self.assertEqual(self.status(sent), "Exported")
+		awaiting = self.payment(None, "2", document=document)
+		batch = dispatch.collect(self.client_doc.name)
+		pending = self.payment(None, "3", document=document)
+
+		with self.assertRaises(frappe.ValidationError):
+			intake.discard_document(document.source_key)
+
+		frappe.db.set_value("DATEV Batch", batch, "status", "Sending")
+		with self.assertRaises(frappe.ValidationError):
+			intake.discard_open_bookings(document.source_key)
+		self.assertTrue(frappe.db.exists("DATEV Booking", pending))
+
+		frappe.db.set_value("DATEV Batch", batch, "status", "Awaiting Approval")
+		intake.discard_open_bookings(document.source_key)
+		self.assertEqual(frappe.get_all("DATEV Booking", {"document": document.name}, pluck="name"), [sent])
+		self.assertFalse(frappe.db.exists("DATEV Batch", batch))
+		self.assertFalse(frappe.db.exists("DATEV Booking", awaiting))
+		self.assertNotEqual(frappe.db.get_value("DATEV Document", document.name, "status"), "Discarded")
+
 	def test_hold_rejects_stuck_booking(self):
 		booking = self.booking(self.document(status="Pending", external_id=None))
 		dispatch.collect(self.client_doc.name)

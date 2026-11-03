@@ -102,9 +102,13 @@ class TestApi(IntegrationTestCase):
 			amount="12.50",
 			debit_credit="S",
 			account="6855",
+			general_reversal="1",
 		)
 		self.assertEqual(
-			frappe.db.get_value("DATEV Booking", booking["name"], ["account", "party_account"]), (6855, None)
+			frappe.db.get_value(
+				"DATEV Booking", booking["name"], ["account", "party_account", "general_reversal"]
+			),
+			(6855, None, 1),
 		)
 
 	def test_status_reports_bookings(self):

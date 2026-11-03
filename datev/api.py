@@ -116,6 +116,7 @@ def submit_booking(
 	due_date=None,
 	account=None,
 	depends_on_document=None,
+	general_reversal=0,
 ):
 	_check_access()
 	name = intake.add_booking(
@@ -133,6 +134,7 @@ def submit_booking(
 		due_date=due_date or None,
 		tax_code=tax_code or None,
 		depends_on_document=depends_on_document or None,
+		general_reversal=sbool(general_reversal),
 	)
 	return {"name": name, "status": frappe.db.get_value("DATEV Booking", name, "status")}
 

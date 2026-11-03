@@ -141,6 +141,13 @@ class TestBookingBatch(IntegrationTestCase):
 		)
 		self.assertEqual(line[column("Beleglink")], "")
 
+	def test_general_reversal_extf(self):
+		reversal = self.booking("2027-01-05", general_reversal=1, line_key="storno:1")
+		normal = self.booking("2027-01-05")
+		_, content = booking_batch.build(self.client, [reversal, normal], CREATED, "Reversal")[0]
+		column = booking_batch.COLUMNS.index("Generalumkehr (GU)")
+		self.assertEqual([line[column] for line in data_lines(content)], ["1", ""])
+
 	def test_missing_party_account_number_rejected(self):
 		party = make_party_account(self.client)
 		document = make_document(self.client)

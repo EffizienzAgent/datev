@@ -41,6 +41,7 @@
   "document_date",
   "document_field_1",
   "depends_on_document",
+  "general_reversal",
   "due_date",
   "fiscal_year",
   "status",
@@ -150,6 +151,13 @@
    "label": "Depends on Document",
    "options": "DATEV Document",
    "description": "This booking waits until all bookings of this document have reached DATEV",
+   "read_only": 1
+  },
+  {
+   "fieldname": "general_reversal",
+   "fieldtype": "Check",
+   "label": "General Reversal",
+   "description": "Reverses an earlier booking in DATEV (Generalumkehr)",
    "read_only": 1
   },
   {

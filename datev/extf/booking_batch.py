@@ -220,5 +220,6 @@ def _line(booking, account_numbers, documents, mappings):
 		"Buchungstext": _optional_text(booking.posting_text, 60),
 		"Beleglink": beleglink,
 		"Festschreibung": "0",
+		"Generalumkehr (GU)": "1" if booking.general_reversal else "",
 	}
 	return ";".join(values.get(column, "") for column in COLUMNS)

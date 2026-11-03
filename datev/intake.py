@@ -10,6 +10,7 @@ from datev.protect import internal
 DOCUMENT = "DATEV Document"
 PARTY_ACCOUNT = "DATEV Party Account"
 BOOKING = "DATEV Booking"
+BATCH = "DATEV Batch"
 OPEN_BOOKING_STATUSES = ("Pending", "Stuck", "Failed")
 
 
@@ -96,21 +97,58 @@ def replace_file(document, file_name: str | None, content: bytes | None) -> None
 	document.db_set("file", file.file_url)
 
 
-def discard_document(source_key: str) -> None:
+def document_by_source_key(source_key: str) -> str:
 	name = frappe.db.get_value(DOCUMENT, {"source_key": source_key}, "name")
 	if not name:
 		frappe.throw(_("No document with source key {0}.").format(source_key), frappe.DoesNotExistError)
+	return name
+
+
+def discard_document(source_key: str) -> None:
+	name = document_by_source_key(source_key)
 	status = frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
 	if status in ("Uploaded", "No Link"):
 		frappe.throw(_("The document is already in DATEV. Create a cancellation invoice instead."))
 	if status == "Discarded":
 		return
+	if frappe.db.exists(BOOKING, {"document": name, "status": ("not in", OPEN_BOOKING_STATUSES)}):
+		frappe.throw(
+			_(
+				"Bookings of document {0} are batched or already in DATEV. "
+				"Discard only its open bookings and add reversal lines instead."
+			).format(name)
+		)
 	frappe.db.set_value(DOCUMENT, name, "status", "Discarded")
 	log_event(DOCUMENT, name, "discarded")
 	for booking in frappe.get_all(
 		BOOKING, filters={"document": name, "status": ("in", OPEN_BOOKING_STATUSES)}, pluck="name"
 	):
 		frappe.delete_doc("DATEV Booking", booking, ignore_permissions=True)
+
+
+def discard_open_bookings(source_key: str) -> None:
+	name = document_by_source_key(source_key)
+	frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
+	batched = frappe.get_all(
+		BOOKING, filters={"document": name, "status": "Batched"}, fields=["name", "line_key", "batch"]
+	)
+	for row in batched:
+		if frappe.db.get_value(BATCH, row.batch, "status", for_update=True) != "Awaiting Approval":
+			frappe.throw(
+				_("Line {0} is in batch {1}, which is being sent. Try again once the batch is done.").format(
+					row.line_key, row.batch
+				)
+			)
+	open_bookings = frappe.get_all(
+		BOOKING, filters={"document": name, "status": ("in", OPEN_BOOKING_STATUSES)}, pluck="name"
+	)
+	for booking in open_bookings + [row.name for row in batched]:
+		frappe.delete_doc(BOOKING, booking, ignore_permissions=True)
+	for batch in {row.batch for row in batched}:
+		if not frappe.db.exists(BOOKING, {"batch": batch}):
+			frappe.delete_doc(BATCH, batch, ignore_permissions=True)
+	if open_bookings or batched:
+		log_event(DOCUMENT, name, "open_bookings_discarded")
 
 
 def add_booking(
@@ -129,6 +167,7 @@ def add_booking(
 	due_date=None,
 	tax_code: str | None = None,
 	depends_on_document: str | None = None,
+	general_reversal: bool = False,
 ) -> str:
 	existing = frappe.db.get_value(
 		BOOKING,
@@ -166,6 +205,7 @@ def add_booking(
 			"document_date": source.document_date,
 			"document_field_1": source.document_number,
 			"depends_on_document": depends_on_document,
+			"general_reversal": 1 if general_reversal else 0,
 		}
 	)
 	booking.save(ignore_permissions=True)

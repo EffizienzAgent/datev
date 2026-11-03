@@ -68,6 +68,39 @@ def proposal_item(booking, document, party_account, client) -> dict:
 	return {key: value for key, value in item.items() if value not in (None, "")}
 
 
+def sequence_record(booking, document, party_account, client) -> dict:
+	factor = technical_factor(client)
+	mappings = {row.source_account: row.datev_account for row in client.account_mappings}
+	if booking.party_account:
+		if not (party_account and party_account.account_number):
+			raise ConnectorError(_("Booking {0} has no party account number.").format(booking.name))
+		account = party_account.account_number
+	else:
+		account = mappings.get(booking.account, booking.account)
+	if not account:
+		raise ConnectorError(_("Booking {0} has no account.").format(booking.name))
+	if not booking.contra_account:
+		raise ConnectorError(_("Booking {0} has no contra account.").format(booking.name))
+	if booking.bu_key and not str(booking.bu_key).isdigit():
+		raise ConnectorError(_("Booking {0} has an invalid BU key.").format(booking.name))
+	record = {
+		"account_number": account * factor,
+		"contra_account_number": mappings.get(booking.contra_account, booking.contra_account) * factor,
+		"amount": flt(booking.amount, 2),
+		"debit_credit_identifier": booking.debit_credit,
+		"date": document_datetime(booking.document_date),
+		"accounting_transaction_key": int(booking.bu_key) if booking.bu_key else None,
+		"document_field1": document_field(booking.document_field_1),
+		"posting_description": (booking.posting_text or "")[:60],
+		"currency_code": booking.currency,
+		"general_reversal": True if booking.general_reversal else None,
+	}
+	if document and document.external_id:
+		record["document_system"] = document.program_code
+		record["document_link"] = document.external_id.upper()
+	return {key: value for key, value in record.items() if value not in (None, "")}
+
+
 def messages(entry: dict) -> str:
 	return "; ".join(
 		f"{message.get('id')}: {message.get('description')}"

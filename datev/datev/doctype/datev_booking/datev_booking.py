@@ -15,6 +15,7 @@ PROTECTED = (
 	"contra_account",
 	"document",
 	"depends_on_document",
+	"general_reversal",
 	"held",
 )
 STATE = ("status", "batch", "held")
