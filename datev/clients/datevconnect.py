@@ -22,6 +22,22 @@ class DATEVconnectError(ConnectorError):
 		self.maybe_sent = maybe_sent
 
 
+def error_message(data) -> str:
+	if not isinstance(data, dict):
+		return ""
+	head = ": ".join(str(part) for part in (data.get("error"), data.get("error_description")) if part)
+	details = "; ".join(
+		f"{message.get('id')}: {message.get('description')}"
+		if message.get("id")
+		else message.get("description")
+		for message in data.get("additional_messages") or []
+		if isinstance(message, dict) and message.get("description")
+	)
+	if head and details:
+		return f"{head} ({details})"
+	return head or details
+
+
 def unexpected(data) -> DATEVconnectError:
 	return DATEVconnectError(_("Unexpected response from DATEVconnect."), response=data)
 
@@ -111,7 +127,7 @@ class DATEVconnect:
 		if 200 <= response.status < 300:
 			return response.data
 		raise DATEVconnectError(
-			response.text or f"HTTP {response.status}",
+			error_message(response.data) or response.text or f"HTTP {response.status}",
 			status=response.status,
 			retryable=response.status >= 500,
 			response=response.data,

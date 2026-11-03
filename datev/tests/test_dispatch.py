@@ -830,11 +830,93 @@ class TestDATEVconnectPreflight(IntegrationTestCase):
 		self.assertEqual(status, "Stuck")
 		self.assertIn("down", message)
 
-	def test_payments_stuck_for_datevconnect(self):
-		booking = self.add("2027-01-05", kind="Payment")
+	def test_payments_checked_strictly_for_datevconnect(self):
+		document = make_document(
+			self.client_doc, document_date="2027-01-05", status="Not Required", direction="Other"
+		)
+
+		def add(line_key, **values):
+			values = {"kind": "Payment", "contra_account": 1800, "amount": 10, "debit_credit": "S", **values}
+			if "party_account" not in values:
+				values["account"] = values.get("account", 6855)
+			return intake.add_booking(document.name, line_key, **values)
+
+		ready = add("1")
+		party = add("2", party_account=self.party.name)
+		too_long = add("3", account=68550)
+		contra_too_long = add("4", contra_account=18000)
+		bad_key = add("5", bu_key="X")
+		invoice_reversal = self.add("2027-01-05", general_reversal=1)
 		with patch(f"{DC_API}.fiscal_years", return_value=OPEN_YEARS):
-			self.assertIsNone(dispatch.collect(self.client_doc.name))
-		self.assertEqual(self.message(booking), ("Stuck", "Payments are not supported yet"))
+			dispatch.collect(self.client_doc.name)
+		self.assertEqual(self.message(ready), ("Pending", "Waiting for line 3 of this document"))
+		self.assertEqual(self.message(party), ("Pending", "Waiting for line 3 of this document"))
+		self.assertEqual(
+			self.message(too_long),
+			("Stuck", "Account 68550 has more digits than the client's account length 4."),
+		)
+		self.assertEqual(
+			self.message(contra_too_long),
+			("Stuck", "Account 18000 has more digits than the client's account length 4."),
+		)
+		self.assertEqual(self.message(bad_key), ("Stuck", "The BU key X is not a number."))
+		self.assertEqual(
+			self.message(invoice_reversal),
+			(
+				"Stuck",
+				"DATEVconnect accepts general reversals only for payments. Send a cancellation invoice instead.",
+			),
+		)
+
+
+class TestDATEVconnectPayments(IntegrationTestCase):
+	def setUp(self):
+		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
+		self.client_doc = dc_client(approval_required=0)
+		document = make_document(
+			self.client_doc, document_date="2027-01-05", status="Not Required", direction="Other"
+		)
+		self.bookings = [
+			intake.add_booking(
+				document.name,
+				str(line),
+				kind="Payment",
+				account=6855,
+				contra_account=1800,
+				amount=10,
+				debit_credit="S",
+			)
+			for line in (1, 2)
+		]
+		with patch(f"{DC_API}.fiscal_years", return_value=OPEN_YEARS):
+			self.batch = dispatch.collect(self.client_doc.name)
+
+	def states(self):
+		return [frappe.db.get_value("DATEV Booking", name, ["status", "batch"]) for name in self.bookings]
+
+	def test_rejected_sequence_fails_all_its_bookings(self):
+		body = {"error": "DCO01001", "error_description": "Invalid accounting sequence"}
+		with patch("datev.http.requests.request", return_value=fake_response(400, body, "raw")):
+			dispatch.send(self.batch)
+		self.assertEqual(self.states(), [("Failed", None), ("Failed", None)])
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", self.bookings[0], "message"),
+			"DCO01001: Invalid accounting sequence",
+		)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Failed")
+
+	def test_timed_out_sequence_stays_uncertain(self):
+		with patch("datev.http.requests.request", side_effect=requests.ReadTimeout("read timed out")):
+			dispatch.send(self.batch)
+		self.assertEqual(self.states(), [("Batched", self.batch), ("Batched", self.batch)])
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Sending")
+
+	def test_accepted_sequence_transfers(self):
+		with patch("datev.http.requests.request", return_value=fake_response(204, None, "")):
+			dispatch.send(self.batch)
+		self.assertEqual(self.states(), [("Transferred", self.batch), ("Transferred", self.batch)])
 
 
 class TestDATEVconnectUncertainGroup(IntegrationTestCase):

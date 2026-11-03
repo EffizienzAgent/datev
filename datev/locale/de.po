@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: DATEV VERSION\n"
 "Report-Msgid-Bugs-To: oss@effizienzagent.de\n"
-"POT-Creation-Date: 2026-11-03 07:49+0000\n"
+"POT-Creation-Date: 2026-11-03 07:52+0000\n"
 "PO-Revision-Date: 2026-11-02 11:08+0000\n"
 "Last-Translator: oss@effizienzagent.de\n"
 "Language: de\n"
@@ -81,6 +81,11 @@ msgstr "Die Kontonummer {0} wird bereits verwendet."
 msgid "Account numbers cannot be requested from DATEV via EXTF."
 msgstr "Kontonummern können über EXTF nicht bei DATEV angefragt werden."
 
+#: datev/connectors/datevconnect.py:185
+#, python-brace-format
+msgid "Account {0} has more digits than the client's account length {1}."
+msgstr "Konto {0} hat mehr Stellen als die Sachkontenlänge {1} des Mandanten."
+
 #. Label of the accounts_section (Section Break) field in DocType 'DATEV
 #. Client'
 #: datev/datev/doctype/datev_client/datev_client.json:360
@@ -95,6 +100,7 @@ msgstr "Konten"
 msgid "Amount"
 msgstr "Betrag"
 
+#: datev/connectors/datevconnect.py:177
 #: datev/datev/doctype/datev_booking/datev_booking.py:37
 msgid "Amount must be greater than zero."
 msgstr "Der Betrag muss größer als null sein."
@@ -190,22 +196,22 @@ msgstr "Im Stapel"
 msgid "Booking {0} cannot be held."
 msgstr "Buchung {0} kann nicht zurückgehalten werden."
 
-#: datev/connectors/datevconnect.py:47 datev/connectors/datevconnect.py:85
+#: datev/connectors/datevconnect.py:49 datev/connectors/datevconnect.py:87
 #, python-brace-format
 msgid "Booking {0} has an invalid BU key."
 msgstr "Buchung {0} hat einen ungültigen BU-Schlüssel."
 
-#: datev/connectors/datevconnect.py:81
+#: datev/connectors/datevconnect.py:83
 #, python-brace-format
 msgid "Booking {0} has no account."
 msgstr "Buchung {0} hat kein Sachkonto."
 
-#: datev/connectors/datevconnect.py:45 datev/connectors/datevconnect.py:83
+#: datev/connectors/datevconnect.py:47 datev/connectors/datevconnect.py:85
 #, python-brace-format
 msgid "Booking {0} has no contra account."
 msgstr "Buchung {0} hat kein Gegenkonto."
 
-#: datev/connectors/datevconnect.py:43 datev/connectors/datevconnect.py:76
+#: datev/connectors/datevconnect.py:45 datev/connectors/datevconnect.py:78
 #: datev/extf/booking_batch.py:206
 #, python-brace-format
 msgid "Booking {0} has no party account number."
@@ -495,7 +501,11 @@ msgstr "DATEVconnect"
 msgid "DATEVconnect Client ID"
 msgstr "DATEVconnect-Mandanten-ID"
 
-#: datev/connectors/datevconnect.py:287
+#: datev/connectors/datevconnect.py:160
+msgid "DATEVconnect accepts general reversals only for payments. Send a cancellation invoice instead."
+msgstr "DATEVconnect nimmt Generalumkehr nur für Zahlungen an. Senden Sie stattdessen eine Stornorechnung."
+
+#: datev/connectors/datevconnect.py:336
 msgid "DATEVconnect has no open fiscal year for this client."
 msgstr "DATEVconnect hat für diesen Mandanten kein offenes Wirtschaftsjahr."
 
@@ -796,22 +806,22 @@ msgstr "Beginn des Wirtschaftsjahres (Monat)"
 msgid "Fiscal year start month must be between 1 and 12."
 msgstr "Der Monat des Wirtschaftsjahresbeginns muss zwischen 1 und 12 liegen."
 
-#: datev/connectors/datevconnect.py:162
+#: datev/connectors/datevconnect.py:170
 #, python-brace-format
 msgid "Fiscal year {0} does not exist in DATEV."
 msgstr "Das Wirtschaftsjahr {0} existiert in DATEV nicht."
 
-#: datev/connectors/datevconnect.py:164
+#: datev/connectors/datevconnect.py:172
 #, python-brace-format
 msgid "Fiscal year {0} is locked in DATEV."
 msgstr "Das Wirtschaftsjahr {0} ist in DATEV gesperrt."
 
-#: datev/connectors/datevconnect.py:294
+#: datev/connectors/datevconnect.py:343
 #, python-brace-format
 msgid "Fiscal year {0}: {1}"
 msgstr "Wirtschaftsjahr {0}: {1}"
 
-#: datev/connectors/datevconnect.py:178
+#: datev/connectors/datevconnect.py:201
 #, python-brace-format
 msgid "Fiscal years could not be read from DATEVconnect: {0}"
 msgstr "Die Wirtschaftsjahre konnten nicht aus DATEVconnect gelesen werden: {0}"
@@ -1085,7 +1095,7 @@ msgstr "Nächster Versuch"
 msgid "No"
 msgstr "Nein"
 
-#: datev/clients/datevconnect.py:49
+#: datev/clients/datevconnect.py:65
 #, python-brace-format
 msgid "No DATEVconnect client {0}/{1}"
 msgstr "Kein DATEVconnect-Mandant {0}/{1}"
@@ -1121,7 +1131,7 @@ msgstr "Keine DATEV-Debitoren-/Kreditorendatei."
 msgid "Not in DATEV"
 msgstr "Nicht in DATEV"
 
-#: datev/connectors/datevconnect.py:235
+#: datev/connectors/datevconnect.py:267
 msgid "Not sent because an earlier request failed."
 msgstr "Nicht gesendet, weil eine vorherige Anfrage fehlgeschlagen ist."
 
@@ -1229,7 +1239,7 @@ msgstr "Typ des Geschäftspartners"
 msgid "Party account {0} belongs to another client."
 msgstr "Personenkonto {0} gehört zu einem anderen Mandanten."
 
-#: datev/connectors/datevconnect.py:282
+#: datev/connectors/datevconnect.py:331
 #, python-brace-format
 msgid "Party account {0} has no account number."
 msgstr "Personenkonto {0} hat keine Kontonummer."
@@ -1253,10 +1263,6 @@ msgstr "Passwort"
 #: datev/datev/doctype/datev_booking/datev_booking.json:80
 msgid "Payment"
 msgstr "Zahlung"
-
-#: datev/connectors/datevconnect.py:157 datev/connectors/datevconnect.py:198
-msgid "Payments are not supported yet"
-msgstr "Zahlungen werden noch nicht unterstützt"
 
 #. Option for the 'Status' (Select) field in DocType 'DATEV Booking'
 #. Option for the 'Status' (Select) field in DocType 'DATEV Document'
@@ -1306,7 +1312,7 @@ msgstr "Referenz-DocType"
 msgid "Reference Name"
 msgstr "Referenzname"
 
-#: datev/connectors/datevconnect.py:130 datev/connectors/datevconnect.py:293
+#: datev/connectors/datevconnect.py:132 datev/connectors/datevconnect.py:342
 msgid "Rejected by DATEVconnect."
 msgstr "Von DATEVconnect abgelehnt."
 
@@ -1563,6 +1569,11 @@ msgstr "Steuerkennzeichen {0} hat keine Zeile in den Steuerschlüsseln des DATEV
 msgid "Tax rate"
 msgstr "Steuersatz"
 
+#: datev/connectors/datevconnect.py:179
+#, python-brace-format
+msgid "The BU key {0} is not a number."
+msgstr "Der BU-Schlüssel {0} ist keine Zahl."
+
 #: datev/documents.py:210
 msgid "The DUo document ID and a reason are required."
 msgstr "Die Beleg-ID in DUo und eine Begründung sind erforderlich."
@@ -1652,7 +1663,7 @@ msgstr "Dienstag"
 msgid "Unexpected response from Business OS."
 msgstr "Unerwartete Antwort von Business OS."
 
-#: datev/clients/datevconnect.py:26
+#: datev/clients/datevconnect.py:42
 msgid "Unexpected response from DATEVconnect."
 msgstr "Unerwartete Antwort von DATEVconnect."
 

@@ -129,6 +129,24 @@ class TestDATEVconnectClient(IntegrationTestCase):
 		self.assertFalse(ctx.exception.retryable)
 		self.assertEqual(ctx.exception.response, {"message": "bad"})
 
+	@patch("datev.http.requests.request")
+	def test_error_message_from_body(self, request):
+		body = {
+			"error": "DCO01001",
+			"error_description": "Invalid request",
+			"additional_messages": [{"id": "A", "description": "First"}, {"description": "Second"}],
+		}
+		for response, message in (
+			(fake_response(400, body, "raw"), "DCO01001: Invalid request (A: First; Second)"),
+			(fake_response(400, {"error_description": "Only text"}, "raw"), "Only text"),
+			(fake_response(400, ["unexpected"], "raw"), "raw"),
+			(fake_response(404, None, ""), "HTTP 404"),
+		):
+			request.return_value = response
+			with self.subTest(message=message), self.assertRaises(DATEVconnectError) as ctx:
+				self.client.post_accounting_sequence(CLIENT, "20270101", {})
+			self.assertEqual(str(ctx.exception), message)
+
 	@patch("datev.http.requests.request", side_effect=requests.ConnectionError("down"))
 	def test_transport_error_retryable(self, request):
 		with self.assertRaises(DATEVconnectError) as ctx:
