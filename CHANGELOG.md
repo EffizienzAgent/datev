@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/EffizienzAgent/datev/compare/v0.3.0...v0.3.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* let intake set Belegfeld 1 per booking ([#7](https://github.com/EffizienzAgent/datev/issues/7)) ([c47c42a](https://github.com/EffizienzAgent/datev/commit/c47c42a9c182f5e47f1354bef552d47bd05e5b9f))
+
 ## [0.3.0](https://github.com/EffizienzAgent/datev/compare/v0.2.0...v0.3.0) (2026-11-03)
 
 
