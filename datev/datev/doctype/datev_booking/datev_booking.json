@@ -40,6 +40,7 @@
   "posting_text",
   "document_date",
   "document_field_1",
+  "depends_on_document",
   "due_date",
   "fiscal_year",
   "status",
@@ -142,6 +143,14 @@
    "fieldname": "document_field_1",
    "fieldtype": "Data",
    "label": "Document Field 1"
+  },
+  {
+   "fieldname": "depends_on_document",
+   "fieldtype": "Link",
+   "label": "Depends on Document",
+   "options": "DATEV Document",
+   "description": "This booking waits until all bookings of this document have reached DATEV",
+   "read_only": 1
   },
   {
    "fieldname": "due_date",

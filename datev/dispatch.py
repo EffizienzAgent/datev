@@ -22,6 +22,8 @@ LINKED_STATUSES = ("Uploaded", "No Link", "Not Required")
 INVOICE_KINDS = ("Outgoing Invoice", "Incoming Invoice")
 MANDATORY_FIELDS = ("kind", "debit_credit", "contra_account", "document_field_1", "document_date")
 RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
+DELIVERED_STATUSES = ("Transferred", "Exported")
+UNREACHABLE_DOCUMENT_STATUSES = ("Stuck", "Discarded")
 SENT_STATUSES = ("Sent", "Partially Sent")
 JOB_TIMEOUT = 3600
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -53,6 +55,19 @@ def preflight(booking) -> str | None:
 		return _("Party account {0} is not ready: {1}").format(
 			party_account.name, party_account.message or _(party_account.sync_status)
 		)
+	return None
+
+
+def waiting_for(booking) -> str | None:
+	name = booking.depends_on_document
+	if not name:
+		return None
+	status = frappe.db.get_value(DOCUMENT, name, "status")
+	if status in UNREACHABLE_DOCUMENT_STATUSES:
+		return _("Waiting for document {0} to reach DATEV (document status {1})").format(name, _(status))
+	statuses = frappe.get_all(BOOKING, filters={"document": name}, pluck="status")
+	if not statuses or any(state not in DELIVERED_STATUSES for state in statuses):
+		return _("Waiting for document {0} to reach DATEV").format(name)
 	return None
 
 
@@ -110,6 +125,11 @@ def collect(client: str) -> str | None:
 	):
 		booking = frappe.get_doc(BOOKING, name, for_update=True)
 		if booking.status not in OPEN_BOOKING_STATUSES or booking.held:
+			continue
+		message = waiting_for(booking)
+		if message:
+			booking.db_set({"status": "Pending", "message": message})
+			blocked.setdefault(booking.document, booking.line_key)
 			continue
 		message = preflight(booking)
 		if message:

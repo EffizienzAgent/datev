@@ -14,6 +14,7 @@ PROTECTED = (
 	"account",
 	"contra_account",
 	"document",
+	"depends_on_document",
 	"held",
 )
 STATE = ("status", "batch", "held")
@@ -27,6 +28,7 @@ class DATEVBooking(Document):
 		self.validate_party_or_account()
 		self.validate_party_account()
 		self.validate_line_key()
+		self.validate_dependency()
 		self.set_fiscal_year()
 
 	def validate_amount(self):
@@ -58,6 +60,17 @@ class DATEVBooking(Document):
 		)
 		if duplicate:
 			frappe.throw(_("Line key {0} already exists for this document.").format(self.line_key))
+
+	def validate_dependency(self):
+		if not self.depends_on_document:
+			return
+		client = frappe.db.get_value("DATEV Document", self.depends_on_document, "client")
+		if self.depends_on_document == self.document or client != self.client:
+			frappe.throw(
+				_("A booking can only depend on another document of the same client: {0}").format(
+					self.depends_on_document
+				)
+			)
 
 	def set_fiscal_year(self):
 		if self.document_date:

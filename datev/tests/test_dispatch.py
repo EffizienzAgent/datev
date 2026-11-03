@@ -670,6 +670,64 @@ class TestDispatch(IntegrationTestCase):
 		intake.discard_document(document.source_key)
 		self.assertFalse(frappe.db.exists("DATEV Booking", {"document": document.name}))
 
+	def payment(self, depends_on, line_key="1", document=None, **values):
+		document = document or self.document(status="Not Required", external_id=None, direction="Other")
+		return self.booking(
+			document,
+			line_key,
+			kind="Payment",
+			contra_account=1800,
+			debit_credit="H",
+			depends_on_document=depends_on.name if depends_on else None,
+			**values,
+		)
+
+	def test_dependency_waits(self):
+		invoice = self.document()
+		self.booking(invoice)
+		document = self.document(status="Not Required", external_id=None, direction="Other")
+		payment = self.payment(invoice, document=document)
+		fee = self.payment(None, "2", document=document, party_account=None, account=6855)
+
+		batch = dispatch.collect(self.client_doc.name)
+
+		self.assertTrue(batch)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", payment, ["status", "batch", "message"]),
+			("Pending", None, f"Waiting for document {invoice.name} to reach DATEV"),
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", fee, ["status", "batch", "message"]),
+			("Pending", None, "Waiting for line 1 of this document"),
+		)
+
+	def test_dependency_released_after_transfer(self):
+		invoice = self.document()
+		self.booking(invoice)
+		payment = self.payment(invoice)
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.status(payment), "Pending")
+
+		batch = dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", payment, "batch"), batch)
+		dispatch.send(batch)
+		self.assertEqual(self.status(payment), "Exported")
+
+	def test_dependency_on_discarded_waits_with_message(self):
+		for status in ("Discarded", "Stuck"):
+			with self.subTest(status=status):
+				invoice = self.document(status=status, external_id=None)
+				payment = self.payment(invoice)
+				self.assertIsNone(dispatch.collect(self.client_doc.name))
+				self.assertEqual(
+					frappe.db.get_value("DATEV Booking", payment, ["status", "message"]),
+					(
+						"Pending",
+						f"Waiting for document {invoice.name} to reach DATEV (document status {status})",
+					),
+				)
+				frappe.delete_doc("DATEV Booking", payment)
+
 	def test_hold_rejects_stuck_booking(self):
 		booking = self.booking(self.document(status="Pending", external_id=None))
 		dispatch.collect(self.client_doc.name)

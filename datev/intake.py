@@ -128,6 +128,7 @@ def add_booking(
 	posting_text: str = "",
 	due_date=None,
 	tax_code: str | None = None,
+	depends_on_document: str | None = None,
 ) -> str:
 	existing = frappe.db.get_value(
 		BOOKING,
@@ -164,6 +165,7 @@ def add_booking(
 			"currency": source.currency,
 			"document_date": source.document_date,
 			"document_field_1": source.document_number,
+			"depends_on_document": depends_on_document,
 		}
 	)
 	booking.save(ignore_permissions=True)
