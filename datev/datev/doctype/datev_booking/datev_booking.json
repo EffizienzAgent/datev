@@ -144,7 +144,9 @@
   {
    "fieldname": "document_field_1",
    "fieldtype": "Data",
-   "label": "Document Field 1"
+   "label": "Document Field 1",
+   "read_only": 1,
+   "description": "Invoice number DATEV uses to clear open items; defaults to the document number"
   },
   {
    "fieldname": "depends_on_document",

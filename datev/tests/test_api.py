@@ -103,7 +103,9 @@ class TestApi(IntegrationTestCase):
 			debit_credit="S",
 			account="6855",
 			general_reversal="1",
+			document_field_1="RE-1",
 		)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", booking["name"], "document_field_1"), "RE-1")
 		self.assertEqual(
 			frappe.db.get_value(
 				"DATEV Booking", booking["name"], ["account", "party_account", "general_reversal"]
