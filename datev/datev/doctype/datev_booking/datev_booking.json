@@ -46,6 +46,7 @@
   "fiscal_year",
   "status",
   "held",
+  "waiting",
   "batch",
   "message"
  ],
@@ -185,6 +186,13 @@
    "fieldname": "held",
    "fieldtype": "Check",
    "label": "Held",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waiting",
+   "fieldtype": "Check",
+   "label": "Waiting for Dependency",
+   "description": "Kept back until the document it depends on has reached DATEV",
    "read_only": 1
   },
   {

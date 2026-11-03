@@ -6,7 +6,7 @@ import frappe
 import requests
 from frappe.tests import IntegrationTestCase
 
-from datev import dispatch, intake
+from datev import dispatch, intake, notify
 from datev.clients.datevconnect import DATEVconnectError
 from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
 from datev.tests.factories import make_client as make_any_client
@@ -220,7 +220,7 @@ class TestDispatch(IntegrationTestCase):
 		self.assertIsNone(check(party_account=party.name))
 		self.assertIsNone(check(status="No Link"))
 		self.assertTrue(check(status="Pending"))
-		self.assertTrue(check(kind="Outgoing Invoice", party_account=party.name))
+		self.assertTrue(check(kind="Outgoing Invoice", status="No Link", party_account=party.name))
 
 	def test_collect_creates_batch_awaiting_approval(self):
 		self.client_doc.db_set("approval_required", 1)
@@ -705,13 +705,54 @@ class TestDispatch(IntegrationTestCase):
 		invoice = self.document()
 		self.booking(invoice)
 		payment = self.payment(invoice)
+		self.enqueue.reset_mock()
 		dispatch.send(dispatch.collect(self.client_doc.name))
 		self.assertEqual(self.status(payment), "Pending")
+		self.enqueue.assert_called_once_with(
+			"datev.dispatch.process_client",
+			**client_job(self.client_doc.name),
+			enqueue_after_commit=True,
+			client=self.client_doc.name,
+		)
 
 		batch = dispatch.collect(self.client_doc.name)
 		self.assertEqual(frappe.db.get_value("DATEV Booking", payment, "batch"), batch)
 		dispatch.send(batch)
 		self.assertEqual(self.status(payment), "Exported")
+
+	def test_process_client_sends_released_payments_at_once(self):
+		invoice = self.document()
+		invoice_line = self.booking(invoice)
+		payment = self.payment(invoice)
+		dispatch.process_client(self.client_doc.name)
+		self.assertEqual((self.status(invoice_line), self.status(payment)), ("Exported", "Exported"))
+		self.assertEqual(len(FakeExport.calls), 2)
+
+	def test_no_release_without_dependents(self):
+		self.booking()
+		self.enqueue.reset_mock()
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.enqueue.assert_not_called()
+
+	def test_waiting_payment_not_overdue(self):
+		invoice = self.document(status="Stuck", external_id=None)
+		payment = self.payment(invoice)
+		self.client_doc.db_set("last_dispatch_on", frappe.utils.add_days(frappe.utils.now_datetime(), -5))
+		self.assertTrue(dispatch.is_overdue(self.client_doc, frappe.utils.now_datetime()))
+		dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", payment, "waiting"), 1)
+		self.client_doc.db_set("last_dispatch_on", frappe.utils.add_days(frappe.utils.now_datetime(), -5))
+		self.assertFalse(dispatch.is_overdue(self.client_doc, frappe.utils.now_datetime()))
+		counts = notify.status_counts(self.client_doc.name, frappe.utils.now_datetime())
+		self.assertEqual(counts["waiting_bookings"], 1)
+
+	def test_account_length_checked_for_every_export(self):
+		booking = self.booking(contra_account=44000)
+		dispatch.collect(self.client_doc.name)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", booking, ["status", "message"]),
+			("Stuck", "Account 44000 has more digits than the client's account length 4."),
+		)
 
 	def test_dependency_on_discarded_waits_with_message(self):
 		for status in ("Discarded", "Stuck"):
@@ -914,9 +955,17 @@ class TestDATEVconnectPayments(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Sending")
 
 	def test_accepted_sequence_transfers(self):
-		with patch("datev.http.requests.request", return_value=fake_response(204, None, "")):
+		body = {"additional_messages": [{"id": "REW9", "description": "Sequence queued"}]}
+		with patch("datev.http.requests.request", return_value=fake_response(200, body, "")):
 			dispatch.send(self.batch)
 		self.assertEqual(self.states(), [("Transferred", self.batch), ("Transferred", self.batch)])
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", self.batch, ["status", "message"]),
+			("Sent", "2 sent, 0 failed.\nREW9: Sequence queued"),
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", self.bookings[0], "message"), "REW9: Sequence queued"
+		)
 
 
 class TestDATEVconnectUncertainGroup(IntegrationTestCase):

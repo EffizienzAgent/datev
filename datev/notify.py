@@ -82,6 +82,7 @@ def status_counts(client: str, now) -> dict:
 		"stuck_documents": count(DOCUMENT, client=client, status="Stuck"),
 		"documents_without_link": count(DOCUMENT, client=client, status="No Link"),
 		"held": count(BOOKING, client=client, held=1),
+		"waiting_bookings": count(BOOKING, client=client, status="Pending", waiting=1),
 		"parties_to_clarify": count(PARTY, client=client, sync_status="To Clarify"),
 		"party_errors": count(PARTY, client=client, sync_status="Error"),
 	}
@@ -170,11 +171,35 @@ def notify_client(client, now) -> None:
 		).format(name, *(counts[field] for field in STUCK_FIELDS))
 		alert(users, subject, link=link)
 
+	notify_unreachable_dependencies(client, users)
+
 	if low_credits(client) and once_a_day(client.name, "credits"):
 		subject = _("{0}: only {1} Business OS credits left (warning at {2})").format(
 			name, client.bos_credits, client.bos_credit_warning
 		)
 		alert(users, subject, link=link)
+
+
+def notify_unreachable_dependencies(client, users: list[str]) -> None:
+	documents = frappe.get_all(
+		BOOKING,
+		filters={
+			"client": client.name,
+			"status": "Pending",
+			"waiting": 1,
+			"depends_on_document": ("is", "set"),
+		},
+		pluck="depends_on_document",
+		distinct=True,
+	)
+	for document in sorted(documents):
+		status = frappe.db.get_value(DOCUMENT, document, "status")
+		if status not in dispatch.UNREACHABLE_DOCUMENT_STATUSES or not once_a_day(client.name, document):
+			continue
+		subject = _("{0}: bookings wait for document {1}, which is {2}").format(
+			escape_html(client.name), escape_html(document), _(status)
+		)
+		alert(users, subject, document_type=DOCUMENT, document_name=document)
 
 
 def file_ready(batch) -> None:

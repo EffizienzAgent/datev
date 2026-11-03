@@ -66,6 +66,21 @@ class TestRecords(IntegrationTestCase):
 			self.document, self.party, kind="Payment", depends_on_document=make_document(self.client).name
 		)
 
+	def test_dependency_cycles_rejected(self):
+		invoice = make_document(self.client)
+		make_booking(invoice, self.party)
+		payment = make_document(self.client, direction="Other")
+		make_booking(payment, self.party, kind="Payment", depends_on_document=invoice.name)
+		other = make_document(self.client, direction="Other")
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(other, self.party, kind="Payment", depends_on_document=payment.name)
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(invoice, self.party, kind="Payment", line_key="p")
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(invoice, self.party, line_key="2", depends_on_document=other.name)
+		make_booking(invoice, self.party, line_key="2")
+		make_booking(other, self.party, kind="Payment", depends_on_document=invoice.name)
+
 	def test_booking_sets_fiscal_year(self):
 		booking = make_booking(self.document, self.party, document_date="2027-01-05")
 		self.assertEqual(booking.fiscal_year, "20270101")

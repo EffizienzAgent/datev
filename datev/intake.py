@@ -12,6 +12,7 @@ PARTY_ACCOUNT = "DATEV Party Account"
 BOOKING = "DATEV Booking"
 BATCH = "DATEV Batch"
 OPEN_BOOKING_STATUSES = ("Pending", "Stuck", "Failed")
+INVOICE_KINDS = ("Outgoing Invoice", "Incoming Invoice")
 
 
 def upsert_document(
@@ -37,6 +38,12 @@ def upsert_document(
 	if existing and existing.status not in ("Pending", "Stuck"):
 		return existing.name
 	has_file = content is not None
+	if not has_file and direction != "Other":
+		frappe.throw(_("Only documents with direction Other can be submitted without a file."))
+	if not has_file and existing and frappe.db.get_value(DOCUMENT, existing.name, "file"):
+		frappe.throw(
+			_("Document {0} already has a file. Submit it again with its file.").format(existing.name)
+		)
 
 	document = frappe.get_doc(DOCUMENT, existing.name) if existing else frappe.new_doc(DOCUMENT)
 	document.update(
@@ -182,6 +189,8 @@ def add_booking(
 	source = frappe.get_doc(DOCUMENT, document)
 	if source.status == "Discarded":
 		frappe.throw(_("Document {0} is discarded and takes no bookings.").format(document))
+	if source.status == "Not Required" and kind in INVOICE_KINDS:
+		frappe.throw(_("Document {0} has no file and takes no invoice bookings.").format(document))
 	if tax_code:
 		mapped = tax_key(source.client, tax_code)
 		bu_key = bu_key or mapped

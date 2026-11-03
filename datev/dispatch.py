@@ -9,7 +9,7 @@ from datev.connectors import registry
 from datev.connectors.base import ConnectorError
 from datev.connectors.datevconnect import clear_fiscal_year_cache
 from datev.events import log_event
-from datev.intake import BOOKING, OPEN_BOOKING_STATUSES
+from datev.intake import BOOKING, INVOICE_KINDS, OPEN_BOOKING_STATUSES
 from datev.parties import ensure_in_datev, set_status
 from datev.protect import internal
 
@@ -19,7 +19,6 @@ DOCUMENT = "DATEV Document"
 PARTY = "DATEV Party Account"
 DISPATCH_ROLES = ["DATEV User", "DATEV Manager"]
 LINKED_STATUSES = ("Uploaded", "No Link", "Not Required")
-INVOICE_KINDS = ("Outgoing Invoice", "Incoming Invoice")
 MANDATORY_FIELDS = ("kind", "debit_credit", "contra_account", "document_field_1", "document_date")
 RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
 DELIVERED_STATUSES = ("Transferred", "Exported")
@@ -37,7 +36,7 @@ def preflight(booking) -> str | None:
 		return _("Missing fields: {0}").format(", ".join(missing))
 
 	client = frappe.get_doc(CLIENT, booking.client)
-	message = registry.get_export(client).check_booking(booking)
+	message = account_length_error(booking, client) or registry.get_export(client).check_booking(booking)
 	if message:
 		return message
 
@@ -55,6 +54,18 @@ def preflight(booking) -> str | None:
 		return _("Party account {0} is not ready: {1}").format(
 			party_account.name, party_account.message or _(party_account.sync_status)
 		)
+	return None
+
+
+def account_length_error(booking, client) -> str | None:
+	length = client.account_length or 4
+	mappings = {row.source_account: row.datev_account for row in client.account_mappings}
+	for number in (booking.account, booking.contra_account):
+		number = mappings.get(number, number)
+		if number and len(str(number)) > length:
+			return _("Account {0} has more digits than the client's account length {1}.").format(
+				number, length
+			)
 	return None
 
 
@@ -95,7 +106,8 @@ def is_overdue(client, now) -> bool:
 	due_date = previous_due_date(client, now.date())
 	if not due_date or not is_due(client, datetime.combine(due_date, time.max)):
 		return False
-	if frappe.db.exists(BOOKING, {"client": client.name, "status": ("in", OPEN_BOOKING_STATUSES), "held": 0}):
+	open_bookings = {"client": client.name, "status": ("in", OPEN_BOOKING_STATUSES), "held": 0, "waiting": 0}
+	if frappe.db.exists(BOOKING, open_bookings):
 		return True
 	return bool(
 		frappe.db.exists(
@@ -117,6 +129,7 @@ def collect(client: str) -> str | None:
 	clear_fiscal_year_cache()
 	ready = []
 	blocked = {}
+	waiting = set()
 	for name in frappe.get_all(
 		BOOKING,
 		filters={"client": client, "status": ("in", OPEN_BOOKING_STATUSES), "held": 0},
@@ -128,16 +141,17 @@ def collect(client: str) -> str | None:
 			continue
 		message = waiting_for(booking)
 		if message:
-			booking.db_set({"status": "Pending", "message": message})
+			booking.db_set({"status": "Pending", "message": message, "waiting": 1})
 			blocked.setdefault(booking.document, booking.line_key)
+			waiting.add(booking.document)
 			continue
 		message = preflight(booking)
 		if message:
-			booking.db_set({"status": "Stuck", "message": message})
+			booking.db_set({"status": "Stuck", "message": message, "waiting": 0})
 			blocked.setdefault(booking.document, booking.line_key)
 		else:
 			ready.append(booking)
-	ready = still_open(client, without_blocked_documents(ready, blocked))
+	ready = still_open(client, without_blocked_documents(ready, blocked, waiting))
 	if not ready:
 		return None
 
@@ -152,12 +166,12 @@ def collect(client: str) -> str | None:
 		)
 	).insert(ignore_permissions=True)
 	for booking in ready:
-		booking.db_set({"status": "Batched", "batch": batch.name, "message": ""})
+		booking.db_set({"status": "Batched", "batch": batch.name, "message": "", "waiting": 0})
 	client_doc.db_set("last_dispatch_on", now_datetime())
 	return batch.name
 
 
-def without_blocked_documents(ready: list, blocked: dict) -> list:
+def without_blocked_documents(ready: list, blocked: dict, waiting: set) -> list:
 	held = frappe.get_all(
 		BOOKING,
 		filters={
@@ -174,7 +188,9 @@ def without_blocked_documents(ready: list, blocked: dict) -> list:
 	for booking in ready:
 		if booking.document in blocked:
 			message = _("Waiting for line {0} of this document").format(blocked[booking.document])
-			booking.db_set({"status": "Pending", "message": message})
+			booking.db_set(
+				{"status": "Pending", "message": message, "waiting": int(booking.document in waiting)}
+			)
 		else:
 			result.append(booking)
 	return result
@@ -344,14 +360,15 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 			continue
 		item = items.get(booking.name)
 		if item and item.ok:
-			booking.db_set({"status": final_status, "message": ""})
+			booking.db_set({"status": final_status, "message": item.message or ""})
 			sent.append(booking)
 		else:
 			message = item.message if item else _("The export connector returned no result.")
 			booking.db_set({"status": "Failed", "batch": None, "message": message})
 
 	failed = len(bookings) - len(sent) - len(uncertain)
-	message = _("{0} sent, {1} failed.").format(len(sent), failed)
+	notes = sorted({items[booking.name].message for booking in sent if items[booking.name].message})
+	message = "\n".join([_("{0} sent, {1} failed.").format(len(sent), failed), *notes])
 	if uncertain:
 		event = "delivery_uncertain"
 		message = _("Delivery to DATEV is uncertain. Check DATEV, then resolve the batch.")
@@ -367,6 +384,28 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 	log_event(BATCH, batch, event, message, result.response)
 	if sent and final_status == "Exported":
 		notify.file_ready(frappe.get_doc(BATCH, batch))
+	release_dependents(sent)
+
+
+def released_dependents(bookings: list) -> list:
+	documents = list({booking.document for booking in bookings})
+	if not documents:
+		return []
+	dependents = frappe.get_all(
+		BOOKING,
+		filters={
+			"depends_on_document": ("in", documents),
+			"status": ("in", OPEN_BOOKING_STATUSES),
+			"held": 0,
+		},
+		fields=["name", "client", "depends_on_document"],
+	)
+	return [row for row in dependents if not waiting_for(row)]
+
+
+def release_dependents(bookings: list) -> None:
+	for client in {row.client for row in released_dependents(bookings)}:
+		enqueue_client(client)
 
 
 def mark_parties_created(bookings: list, final_status: str) -> None:
@@ -398,6 +437,7 @@ def resolve_batch(batch: str, delivered: bool) -> None:
 		for booking in bookings:
 			booking.db_set({"status": final_status, "message": ""})
 		mark_parties_created(bookings, final_status)
+		release_dependents(bookings)
 		status, event = ("Partially Sent" if batch_doc.failed_count else "Sent"), "resolved_delivered"
 	else:
 		for booking in bookings:
@@ -468,7 +508,7 @@ def run() -> None:
 			)
 
 
-def process_client(client: str) -> None:
+def process_client(client: str, follow_up: bool = True) -> None:
 	try:
 		batch = collect(client)
 		frappe.db.commit()
@@ -480,6 +520,8 @@ def process_client(client: str) -> None:
 		raise
 	if batch and frappe.db.get_value(BATCH, batch, "status") == "Approved":
 		send(batch)
+		if follow_up and released_dependents(frappe.get_all(BOOKING, {"batch": batch}, ["document"])):
+			process_client(client, follow_up=False)
 
 
 @frappe.whitelist(methods=["POST"])

@@ -177,14 +177,6 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 			return _("Amount must be greater than zero.")
 		if booking.bu_key and not str(booking.bu_key).isdigit():
 			return _("The BU key {0} is not a number.").format(booking.bu_key)
-		length = self.client.account_length or 4
-		mappings = {row.source_account: row.datev_account for row in self.client.account_mappings}
-		for number in (booking.account, booking.contra_account):
-			number = mappings.get(number, number)
-			if number and len(str(number)) > length:
-				return _("Account {0} has more digits than the client's account length {1}.").format(
-					number, length
-				)
 		return None
 
 	def fiscal_years(self) -> dict | str:

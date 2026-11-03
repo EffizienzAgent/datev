@@ -200,10 +200,12 @@ def _optional_text(value, max_len=None):
 def _line(booking, account_numbers, documents, mappings):
 	if booking.account:
 		account = mappings.get(booking.account, booking.account)
+		missing = _("Booking {0} has no account.")
 	else:
 		account = account_numbers.get(booking.party_account)
+		missing = _("Booking {0} has no party account number.")
 	if not account:
-		frappe.throw(_("Booking {0} has no party account number.").format(booking.name))
+		frappe.throw(missing.format(booking.name))
 	document = documents.get(booking.document)
 	beleglink = ""
 	if document and document.external_id:

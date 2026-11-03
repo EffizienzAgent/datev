@@ -15,7 +15,7 @@ All submit calls are idempotent: repeating a call with the same `source_key` (do
 | `client` | Name of the DATEV Client |
 | `source_key` | Unique key of the document in the source system |
 | `direction` | `Outgoing`, `Incoming` or `Other` |
-| `file_name`, `content_base64` | File and its base64 content (strictly validated). Leave both empty for a payment: the document gets status `Not Required` and is never uploaded |
+| `file_name`, `content_base64` | File and its base64 content (strictly validated). Leave both empty for a payment (direction `Other` only): the document gets status `Not Required` and is never uploaded |
 | `document_date`, `document_number`, `amount` | Header data |
 | `currency` | Default `EUR` |
 | `is_return` | `1` for cancellation invoices |

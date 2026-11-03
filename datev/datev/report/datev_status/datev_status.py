@@ -34,6 +34,7 @@ def get_columns() -> list[dict]:
 		column("stuck_documents", _("Stuck Documents")),
 		column("documents_without_link", _("Documents without Link")),
 		column("held", _("Held")),
+		column("waiting_bookings", _("Waiting for Dependency")),
 		column("parties_to_clarify", _("Parties to Clarify")),
 		column("party_errors", _("Party Errors")),
 		column("overdue", _("Overdue"), "Check", width=90),
