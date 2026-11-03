@@ -91,6 +91,26 @@ class TestApi(IntegrationTestCase):
 		self.assertEqual(booking["status"], "Pending")
 		self.assertEqual(frappe.db.get_value("DATEV Booking", booking["name"], "contra_account"), 8400)
 
+	def test_submit_payment_without_file(self):
+		document, _values = self.submit(direction="Other", file_name=None, content_base64=None)
+		self.assertEqual(document["status"], "Not Required")
+		booking = api.submit_booking(
+			document["name"],
+			"1",
+			"Payment",
+			contra_account="1800",
+			amount="12.50",
+			debit_credit="S",
+			account="6855",
+			general_reversal="1",
+		)
+		self.assertEqual(
+			frappe.db.get_value(
+				"DATEV Booking", booking["name"], ["account", "party_account", "general_reversal"]
+			),
+			(6855, None, 1),
+		)
+
 	def test_status_reports_bookings(self):
 		document = make_document(self.client_doc, status="Uploaded", external_id="ID-1", program_code="DUO")
 		party = make_party_account(self.client_doc)

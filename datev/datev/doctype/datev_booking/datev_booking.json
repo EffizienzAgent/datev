@@ -30,6 +30,7 @@
   "line_key",
   "kind",
   "party_account",
+  "account",
   "contra_account",
   "debit_credit",
   "amount",
@@ -39,10 +40,13 @@
   "posting_text",
   "document_date",
   "document_field_1",
+  "depends_on_document",
+  "general_reversal",
   "due_date",
   "fiscal_year",
   "status",
   "held",
+  "waiting",
   "batch",
   "message"
  ],
@@ -83,6 +87,13 @@
    "fieldtype": "Link",
    "label": "Party Account",
    "options": "DATEV Party Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Int",
+   "label": "Account",
+   "description": "General ledger account, for payment lines without a party account",
    "read_only": 1
   },
   {
@@ -136,6 +147,21 @@
    "label": "Document Field 1"
   },
   {
+   "fieldname": "depends_on_document",
+   "fieldtype": "Link",
+   "label": "Depends on Document",
+   "options": "DATEV Document",
+   "description": "This booking waits until all bookings of this document have reached DATEV",
+   "read_only": 1
+  },
+  {
+   "fieldname": "general_reversal",
+   "fieldtype": "Check",
+   "label": "General Reversal",
+   "description": "Reverses an earlier booking in DATEV (Generalumkehr)",
+   "read_only": 1
+  },
+  {
    "fieldname": "due_date",
    "fieldtype": "Date",
    "label": "Due Date"
@@ -160,6 +186,13 @@
    "fieldname": "held",
    "fieldtype": "Check",
    "label": "Held",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waiting",
+   "fieldtype": "Check",
+   "label": "Waiting for Dependency",
+   "description": "Kept back until the document it depends on has reached DATEV",
    "read_only": 1
   },
   {

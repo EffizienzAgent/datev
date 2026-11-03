@@ -124,6 +124,25 @@ class TestNotify(IntegrationTestCase):
 		entries = logs(self.user, subject=("like", "%overdue%"))
 		self.assertEqual(len(entries), 1)
 
+	def test_unreachable_dependency_notified_once_a_day(self):
+		client = frappe.get_doc("DATEV Client", self.client_doc.name)
+		invoice = make_document(client, status="Discarded")
+		payment = make_document(client, direction="Other", status="Not Required")
+		for line in ("1", "2"):
+			make_booking(
+				payment,
+				make_party_account(client),
+				kind="Payment",
+				line_key=line,
+				depends_on_document=invoice.name,
+				waiting=1,
+			)
+		notify.check()
+		notify.check()
+		entries = logs(self.user, document_name=invoice.name)
+		self.assertEqual(len(entries), 1)
+		self.assertIn("which is Discarded", entries[0].subject)
+
 	def test_stuck_summary_once_a_day(self):
 		client = frappe.get_doc("DATEV Client", self.client_doc.name)
 		make_document(client, status="Stuck", message="boom")
@@ -203,6 +222,7 @@ class TestNotify(IntegrationTestCase):
 				"stuck_documents",
 				"documents_without_link",
 				"held",
+				"waiting_bookings",
 				"parties_to_clarify",
 				"party_errors",
 				"overdue",

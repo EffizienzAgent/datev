@@ -6,7 +6,7 @@ import frappe
 import requests
 from frappe.tests import IntegrationTestCase
 
-from datev import dispatch, intake
+from datev import dispatch, intake, notify
 from datev.clients.datevconnect import DATEVconnectError
 from datev.connectors.base import ConnectorError, ExportConnector, ExportItemResult, ExportResult
 from datev.tests.factories import make_client as make_any_client
@@ -198,6 +198,29 @@ class TestDispatch(IntegrationTestCase):
 		self.assertTrue(check(status="Pending"))
 		self.assertTrue(check(party_account=blocked))
 		self.assertTrue(check(document_number=""))
+
+	def test_payment_ignores_link_requirement(self):
+		client = make_client(require_document_link=1)
+		party = make_party_account(client, preferred_number=10001)
+
+		def check(kind="Payment", status="Not Required", **values):
+			document = self.document(client, status=status, external_id=None, direction="Other")
+			name = intake.add_booking(
+				document.name,
+				"1",
+				kind=kind,
+				contra_account=1800,
+				amount=50,
+				debit_credit="H",
+				**(values or {"account": 6855}),
+			)
+			return dispatch.preflight(frappe.get_doc("DATEV Booking", name))
+
+		self.assertIsNone(check())
+		self.assertIsNone(check(party_account=party.name))
+		self.assertIsNone(check(status="No Link"))
+		self.assertTrue(check(status="Pending"))
+		self.assertTrue(check(kind="Outgoing Invoice", status="No Link", party_account=party.name))
 
 	def test_collect_creates_batch_awaiting_approval(self):
 		self.client_doc.db_set("approval_required", 1)
@@ -647,6 +670,150 @@ class TestDispatch(IntegrationTestCase):
 		intake.discard_document(document.source_key)
 		self.assertFalse(frappe.db.exists("DATEV Booking", {"document": document.name}))
 
+	def payment(self, depends_on, line_key="1", document=None, **values):
+		document = document or self.document(status="Not Required", external_id=None, direction="Other")
+		return self.booking(
+			document,
+			line_key,
+			kind="Payment",
+			contra_account=1800,
+			debit_credit="H",
+			depends_on_document=depends_on.name if depends_on else None,
+			**values,
+		)
+
+	def test_dependency_waits(self):
+		invoice = self.document()
+		self.booking(invoice)
+		document = self.document(status="Not Required", external_id=None, direction="Other")
+		payment = self.payment(invoice, document=document)
+		fee = self.payment(None, "2", document=document, party_account=None, account=6855)
+
+		batch = dispatch.collect(self.client_doc.name)
+
+		self.assertTrue(batch)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", payment, ["status", "batch", "message"]),
+			("Pending", None, f"Waiting for document {invoice.name} to reach DATEV"),
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", fee, ["status", "batch", "message"]),
+			("Pending", None, "Waiting for line 1 of this document"),
+		)
+
+	def test_dependency_released_after_transfer(self):
+		invoice = self.document()
+		self.booking(invoice)
+		payment = self.payment(invoice)
+		self.enqueue.reset_mock()
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.status(payment), "Pending")
+		self.enqueue.assert_called_once_with(
+			"datev.dispatch.process_client",
+			**client_job(self.client_doc.name),
+			enqueue_after_commit=True,
+			client=self.client_doc.name,
+		)
+
+		batch = dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", payment, "batch"), batch)
+		dispatch.send(batch)
+		self.assertEqual(self.status(payment), "Exported")
+
+	def test_process_client_sends_released_payments_at_once(self):
+		invoice = self.document()
+		invoice_line = self.booking(invoice)
+		payment = self.payment(invoice)
+		dispatch.process_client(self.client_doc.name)
+		self.assertEqual((self.status(invoice_line), self.status(payment)), ("Exported", "Exported"))
+		self.assertEqual(len(FakeExport.calls), 2)
+
+	def test_no_release_without_dependents(self):
+		self.booking()
+		self.enqueue.reset_mock()
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.enqueue.assert_not_called()
+
+	def test_waiting_payment_not_overdue(self):
+		invoice = self.document(status="Stuck", external_id=None)
+		payment = self.payment(invoice)
+		self.client_doc.db_set("last_dispatch_on", frappe.utils.add_days(frappe.utils.now_datetime(), -5))
+		self.assertTrue(dispatch.is_overdue(self.client_doc, frappe.utils.now_datetime()))
+		dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", payment, "waiting"), 1)
+		self.client_doc.db_set("last_dispatch_on", frappe.utils.add_days(frappe.utils.now_datetime(), -5))
+		self.assertFalse(dispatch.is_overdue(self.client_doc, frappe.utils.now_datetime()))
+		counts = notify.status_counts(self.client_doc.name, frappe.utils.now_datetime())
+		self.assertEqual(counts["waiting_bookings"], 1)
+
+	def test_account_length_checked_for_every_export(self):
+		booking = self.booking(contra_account=44000)
+		dispatch.collect(self.client_doc.name)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", booking, ["status", "message"]),
+			("Stuck", "Account 44000 has more digits than the client's account length 4."),
+		)
+
+	def test_dependency_on_discarded_waits_with_message(self):
+		for status in ("Discarded", "Stuck"):
+			with self.subTest(status=status):
+				invoice = self.document(status=status, external_id=None)
+				payment = self.payment(invoice)
+				self.assertIsNone(dispatch.collect(self.client_doc.name))
+				self.assertEqual(
+					frappe.db.get_value("DATEV Booking", payment, ["status", "message"]),
+					(
+						"Pending",
+						f"Waiting for document {invoice.name} to reach DATEV (document status {status})",
+					),
+				)
+				frappe.delete_doc("DATEV Booking", payment)
+
+	def test_reversal_lines_once(self):
+		document = self.document(status="Not Required", external_id=None, direction="Other")
+		original = self.payment(None, document=document)
+		dispatch.send(dispatch.collect(self.client_doc.name))
+		self.assertEqual(self.status(original), "Exported")
+
+		reversal = self.payment(None, "storno:1", document=document, general_reversal=1)
+		self.assertNotEqual(reversal, original)
+		self.assertEqual(self.payment(None, "storno:1", document=document, general_reversal=1), reversal)
+		batch = dispatch.collect(self.client_doc.name)
+		self.assertEqual(frappe.get_all("DATEV Booking", {"batch": batch}, pluck="name"), [reversal])
+		dispatch.send(batch)
+		self.assertEqual(self.payment(None, "storno:1", document=document, general_reversal=1), reversal)
+		self.assertEqual(frappe.db.count("DATEV Booking", {"document": document.name}), 2)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", reversal, "general_reversal"), 1)
+		self.assertEqual(FakeExport.calls, [[original], [reversal]])
+		self.assertIsNone(dispatch.collect(self.client_doc.name))
+
+	def test_discard_open_bookings_blocks_batched(self):
+		self.client_doc.db_set("approval_required", 1)
+		document = self.document(status="Not Required", external_id=None, direction="Other")
+		sent = self.payment(None, document=document)
+		first = dispatch.collect(self.client_doc.name)
+		dispatch.approve(first)
+		dispatch.send(first)
+		self.assertEqual(self.status(sent), "Exported")
+		awaiting = self.payment(None, "2", document=document)
+		batch = dispatch.collect(self.client_doc.name)
+		pending = self.payment(None, "3", document=document)
+
+		with self.assertRaises(frappe.ValidationError):
+			intake.discard_document(document.source_key)
+
+		frappe.db.set_value("DATEV Batch", batch, "status", "Sending")
+		with self.assertRaises(frappe.ValidationError):
+			intake.discard_open_bookings(document.source_key)
+		self.assertTrue(frappe.db.exists("DATEV Booking", pending))
+
+		frappe.db.set_value("DATEV Batch", batch, "status", "Awaiting Approval")
+		intake.discard_open_bookings(document.source_key)
+		self.assertEqual(frappe.get_all("DATEV Booking", {"document": document.name}, pluck="name"), [sent])
+		self.assertFalse(frappe.db.exists("DATEV Batch", batch))
+		self.assertFalse(frappe.db.exists("DATEV Booking", awaiting))
+		self.assertNotEqual(frappe.db.get_value("DATEV Document", document.name, "status"), "Discarded")
+
 	def test_hold_rejects_stuck_booking(self):
 		booking = self.booking(self.document(status="Pending", external_id=None))
 		dispatch.collect(self.client_doc.name)
@@ -704,11 +871,101 @@ class TestDATEVconnectPreflight(IntegrationTestCase):
 		self.assertEqual(status, "Stuck")
 		self.assertIn("down", message)
 
-	def test_payments_stuck_for_datevconnect(self):
-		booking = self.add("2027-01-05", kind="Payment")
+	def test_payments_checked_strictly_for_datevconnect(self):
+		document = make_document(
+			self.client_doc, document_date="2027-01-05", status="Not Required", direction="Other"
+		)
+
+		def add(line_key, **values):
+			values = {"kind": "Payment", "contra_account": 1800, "amount": 10, "debit_credit": "S", **values}
+			if "party_account" not in values:
+				values["account"] = values.get("account", 6855)
+			return intake.add_booking(document.name, line_key, **values)
+
+		ready = add("1")
+		party = add("2", party_account=self.party.name)
+		too_long = add("3", account=68550)
+		contra_too_long = add("4", contra_account=18000)
+		bad_key = add("5", bu_key="X")
+		invoice_reversal = self.add("2027-01-05", general_reversal=1)
 		with patch(f"{DC_API}.fiscal_years", return_value=OPEN_YEARS):
-			self.assertIsNone(dispatch.collect(self.client_doc.name))
-		self.assertEqual(self.message(booking), ("Stuck", "Payments are not supported yet"))
+			dispatch.collect(self.client_doc.name)
+		self.assertEqual(self.message(ready), ("Pending", "Waiting for line 3 of this document"))
+		self.assertEqual(self.message(party), ("Pending", "Waiting for line 3 of this document"))
+		self.assertEqual(
+			self.message(too_long),
+			("Stuck", "Account 68550 has more digits than the client's account length 4."),
+		)
+		self.assertEqual(
+			self.message(contra_too_long),
+			("Stuck", "Account 18000 has more digits than the client's account length 4."),
+		)
+		self.assertEqual(self.message(bad_key), ("Stuck", "The BU key X is not a number."))
+		self.assertEqual(
+			self.message(invoice_reversal),
+			(
+				"Stuck",
+				"DATEVconnect accepts general reversals only for payments. Send a cancellation invoice instead.",
+			),
+		)
+
+
+class TestDATEVconnectPayments(IntegrationTestCase):
+	def setUp(self):
+		for patcher in (patch("frappe.get_hooks", fake_hooks), patch("frappe.db.commit")):
+			patcher.start()
+			self.addCleanup(patcher.stop)
+		self.client_doc = dc_client(approval_required=0)
+		document = make_document(
+			self.client_doc, document_date="2027-01-05", status="Not Required", direction="Other"
+		)
+		self.bookings = [
+			intake.add_booking(
+				document.name,
+				str(line),
+				kind="Payment",
+				account=6855,
+				contra_account=1800,
+				amount=10,
+				debit_credit="S",
+			)
+			for line in (1, 2)
+		]
+		with patch(f"{DC_API}.fiscal_years", return_value=OPEN_YEARS):
+			self.batch = dispatch.collect(self.client_doc.name)
+
+	def states(self):
+		return [frappe.db.get_value("DATEV Booking", name, ["status", "batch"]) for name in self.bookings]
+
+	def test_rejected_sequence_fails_all_its_bookings(self):
+		body = {"error": "DCO01001", "error_description": "Invalid accounting sequence"}
+		with patch("datev.http.requests.request", return_value=fake_response(400, body, "raw")):
+			dispatch.send(self.batch)
+		self.assertEqual(self.states(), [("Failed", None), ("Failed", None)])
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", self.bookings[0], "message"),
+			"DCO01001: Invalid accounting sequence",
+		)
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Failed")
+
+	def test_timed_out_sequence_stays_uncertain(self):
+		with patch("datev.http.requests.request", side_effect=requests.ReadTimeout("read timed out")):
+			dispatch.send(self.batch)
+		self.assertEqual(self.states(), [("Batched", self.batch), ("Batched", self.batch)])
+		self.assertEqual(frappe.db.get_value("DATEV Batch", self.batch, "status"), "Sending")
+
+	def test_accepted_sequence_transfers(self):
+		body = {"additional_messages": [{"id": "REW9", "description": "Sequence queued"}]}
+		with patch("datev.http.requests.request", return_value=fake_response(200, body, "")):
+			dispatch.send(self.batch)
+		self.assertEqual(self.states(), [("Transferred", self.batch), ("Transferred", self.batch)])
+		self.assertEqual(
+			frappe.db.get_value("DATEV Batch", self.batch, ["status", "message"]),
+			("Sent", "2 sent, 0 failed.\nREW9: Sequence queued"),
+		)
+		self.assertEqual(
+			frappe.db.get_value("DATEV Booking", self.bookings[0], "message"), "REW9: Sequence queued"
+		)
 
 
 class TestDATEVconnectUncertainGroup(IntegrationTestCase):

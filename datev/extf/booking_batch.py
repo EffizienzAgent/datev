@@ -171,10 +171,13 @@ def _file(client, fiscal_year, bookings, mappings, created, description):
 
 
 def _account_numbers(bookings):
+	names = {booking.party_account for booking in bookings if booking.party_account}
+	if not names:
+		return {}
 	return dict(
 		frappe.get_all(
 			"DATEV Party Account",
-			filters={"name": ("in", {booking.party_account for booking in bookings})},
+			filters={"name": ("in", names)},
 			fields=["name", "account_number"],
 			as_list=True,
 		)
@@ -195,9 +198,14 @@ def _optional_text(value, max_len=None):
 
 
 def _line(booking, account_numbers, documents, mappings):
-	account = account_numbers.get(booking.party_account)
+	if booking.account:
+		account = mappings.get(booking.account, booking.account)
+		missing = _("Booking {0} has no account.")
+	else:
+		account = account_numbers.get(booking.party_account)
+		missing = _("Booking {0} has no party account number.")
 	if not account:
-		frappe.throw(_("Booking {0} has no party account number.").format(booking.name))
+		frappe.throw(missing.format(booking.name))
 	document = documents.get(booking.document)
 	beleglink = ""
 	if document and document.external_id:
@@ -214,5 +222,6 @@ def _line(booking, account_numbers, documents, mappings):
 		"Buchungstext": _optional_text(booking.posting_text, 60),
 		"Beleglink": beleglink,
 		"Festschreibung": "0",
+		"Generalumkehr (GU)": "1" if booking.general_reversal else "",
 	}
 	return ";".join(values.get(column, "") for column in COLUMNS)

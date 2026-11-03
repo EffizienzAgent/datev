@@ -8,7 +8,12 @@ from urllib3.exceptions import MaxRetryError, NewConnectionError
 from datev import dispatch, intake, notify
 from datev.clients.datevconnect import DATEVconnectError
 from datev.connectors.base import ConnectorError
-from datev.connectors.datevconnect import DATEVconnectExport, DATEVconnectMasterData, proposal_item
+from datev.connectors.datevconnect import (
+	DATEVconnectExport,
+	DATEVconnectMasterData,
+	proposal_item,
+	sequence_record,
+)
 from datev.connectors.extf import ExtfDownloadExport, ExtfEmailExport, ExtfMasterData
 from datev.tests.factories import make_booking, make_client, make_document, make_party_account
 from datev.tests.test_datevconnect_client import fake_response
@@ -103,6 +108,41 @@ class TestProposalItem(IntegrationTestCase):
 		booking = make_booking(document, party, contra_account=84000)
 		item = proposal_item(booking, document, party, client)
 		self.assertEqual((item["debitor_account_number"], item["account_number"]), (100001000, 84000000))
+
+
+class TestSequenceRecord(IntegrationTestCase):
+	def setUp(self):
+		self.client = dc_client(account_mappings=[{"source_account": 8400, "datev_account": 4400}])
+
+	def test_general_reversal_datevconnect_item(self):
+		document = make_document(self.client, status="Not Required", direction="Other")
+		booking = make_booking(
+			document,
+			None,
+			kind="Payment",
+			account=8400,
+			contra_account=1800,
+			debit_credit="H",
+			general_reversal=1,
+			posting_text="Storno fee",
+			document_field_1="RE-9",
+		)
+		self.assertEqual(
+			sequence_record(booking, document, None, self.client),
+			{
+				"account_number": 44000000,
+				"contra_account_number": 18000000,
+				"amount": 119.0,
+				"debit_credit_identifier": "H",
+				"date": "2027-01-05T00:00:00+01:00",
+				"document_field1": "RE-9",
+				"posting_description": "Storno fee",
+				"currency_code": "EUR",
+				"general_reversal": True,
+			},
+		)
+		booking.general_reversal = 0
+		self.assertNotIn("general_reversal", sequence_record(booking, document, None, self.client))
 
 
 class TestDATEVconnectExport(IntegrationTestCase):
@@ -252,16 +292,142 @@ class TestDATEVconnectExport(IntegrationTestCase):
 		lookup.assert_called_once_with(55003, 29098)
 		self.assertEqual(frappe.db.get_value("DATEV Client", client.name, "dc_client_id"), CLIENT_ID)
 
-	def test_payments_fail_per_item(self):
-		payment = self.booking("2027-01-05")
-		payment.kind = "Payment"
-		invoice = self.booking("2027-01-06")
-		with patch(f"{API}.post_proposals", return_value={"succeeded": [{"index": "0"}]}) as post:
-			result = DATEVconnectExport(self.client).export(self.batch, [payment, invoice])
-		post.assert_called_once()
+	def payment(self, date, **values):
+		document = make_document(self.client, document_date=date, direction="Other", status="Not Required")
+		values = {
+			"kind": "Payment",
+			"contra_account": 1800,
+			"debit_credit": "H",
+			"document_field_1": "ZE-1",
+			**values,
+		}
+		return make_booking(document, None if "account" in values else self.debtor, **values)
+
+	def sequences(self, bookings, response=None, side_effect=None):
+		with patch(f"{API}.post_accounting_sequence", return_value=response, side_effect=side_effect) as post:
+			result = DATEVconnectExport(self.client).export(self.batch, bookings)
+		return result, [call.args for call in post.call_args_list]
+
+	def test_sequences_per_month(self):
+		bookings = [
+			self.payment("2026-12-30"),
+			self.payment("2027-01-20"),
+			self.payment("2027-01-05"),
+			self.payment("2027-02-03"),
+		]
+		result, calls = self.sequences(bookings, {})
+		self.assertEqual(
+			[
+				(
+					client_id,
+					year,
+					payload["date_from"][:10],
+					payload["date_to"][:10],
+					len(payload["accounting_records"]),
+				)
+				for client_id, year, payload in calls
+			],
+			[
+				(CLIENT_ID, "20260101", "2026-12-30", "2026-12-30", 1),
+				(CLIENT_ID, "20270101", "2027-01-05", "2027-01-20", 2),
+				(CLIENT_ID, "20270101", "2027-02-03", "2027-02-03", 1),
+			],
+		)
+		self.assertEqual(
+			[(item.booking, item.ok) for item in result.items], [(b.name, True) for b in bookings]
+		)
+		self.assertEqual(result.uncertain, [])
+
+	def test_sequence_payload(self):
+		received = self.payment("2027-01-05", amount=100, posting_text="Payment RE-1")
+		fee = self.payment("2027-01-31", account=6855, debit_credit="S", amount=2.5, general_reversal=1)
+		_result, ((_client_id, _year, payload),) = self.sequences([received, fee], {})
+		self.assertEqual(
+			payload,
+			{
+				"date_from": "2027-01-05T00:00:00+01:00",
+				"date_to": "2027-01-31T00:00:00+01:00",
+				"description": f"{self.batch.name} 01/2027"[:30],
+				"record_type": "financial_accounting",
+				"is_committed": False,
+				"accounting_records": [
+					{
+						"account_number": 100010000,
+						"contra_account_number": 18000000,
+						"amount": 100.0,
+						"debit_credit_identifier": "H",
+						"date": "2027-01-05T00:00:00+01:00",
+						"document_field1": "ZE-1",
+						"posting_description": "Payment RE-1",
+						"currency_code": "EUR",
+					},
+					{
+						"account_number": 68550000,
+						"contra_account_number": 18000000,
+						"amount": 2.5,
+						"debit_credit_identifier": "S",
+						"date": "2027-01-31T00:00:00+01:00",
+						"document_field1": "ZE-1",
+						"currency_code": "EUR",
+						"general_reversal": True,
+					},
+				],
+			},
+		)
+
+	def test_sequence_rejected(self):
+		january = [self.payment("2027-01-05"), self.payment("2027-01-06")]
+		february = self.payment("2027-02-01")
+		body = {
+			"error": "DCO01001",
+			"error_description": "Invalid accounting sequence",
+			"additional_messages": [{"id": "REW1", "description": "Account missing"}],
+		}
+
+		def request(method, url, json=None, **kwargs):
+			if json["date_from"].startswith("2027-01"):
+				return fake_response(400, body, "raw")
+			return fake_response(204, None, "")
+
+		with patch("datev.http.requests.request", side_effect=request):
+			result = DATEVconnectExport(self.client).export(self.batch, [*january, february])
+		message = "DCO01001: Invalid accounting sequence (REW1: Account missing)"
 		self.assertEqual(
 			[(item.booking, item.ok, item.message) for item in result.items],
-			[(payment.name, False, "Payments are not supported yet"), (invoice.name, True, "")],
+			[(january[0].name, False, message), (january[1].name, False, message), (february.name, True, "")],
+		)
+		self.assertEqual(result.uncertain, [])
+
+	def test_sequence_timeout_uncertain(self):
+		january = self.payment("2027-01-05")
+		february = self.payment("2027-02-01")
+		for outcome in (requests.ReadTimeout("read timed out"), fake_response(500, None, "Server Error")):
+
+			def request(method, url, json=None, outcome=outcome, **kwargs):
+				if json["date_from"].startswith("2027-01"):
+					if isinstance(outcome, Exception):
+						raise outcome
+					return outcome
+				return fake_response(200, {}, "{}")
+
+			with self.subTest(outcome=outcome), patch("datev.http.requests.request", side_effect=request):
+				result = DATEVconnectExport(self.client).export(self.batch, [january, february])
+				self.assertEqual(result.uncertain, [january.name])
+				self.assertEqual([(item.booking, item.ok) for item in result.items], [(february.name, True)])
+
+	def test_mixed_batch_invoices_and_payments(self):
+		invoice = self.booking("2027-01-05")
+		payment = self.payment("2027-01-06")
+		with (
+			patch(f"{API}.post_proposals", return_value={"succeeded": [{"index": "0"}]}) as proposals,
+			patch(f"{API}.post_accounting_sequence", return_value={}) as sequences,
+		):
+			result = DATEVconnectExport(self.client).export(self.batch, [payment, invoice])
+		self.assertEqual(proposals.call_args.args[:3], (CLIENT_ID, "20270101", "outgoing"))
+		self.assertEqual(len(proposals.call_args.args[3]), 1)
+		self.assertEqual(len(sequences.call_args.args[2]["accounting_records"]), 1)
+		self.assertEqual(
+			[(item.booking, item.ok) for item in result.items], [(payment.name, True), (invoice.name, True)]
 		)
 
 	def test_unexpected_bodies_are_uncertain(self):

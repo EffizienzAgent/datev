@@ -24,6 +24,7 @@ def event_label(event: str) -> str:
 		"upload_failed": _("Upload failed"),
 		"marked_uploaded": _("Marked as uploaded"),
 		"discarded": _("Discarded"),
+		"open_bookings_discarded": _("Open bookings discarded"),
 		"retried": _("Retried"),
 		"retry": _("Will be retried"),
 		"created": _("Created"),

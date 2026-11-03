@@ -10,7 +10,9 @@ from datev.protect import internal
 DOCUMENT = "DATEV Document"
 PARTY_ACCOUNT = "DATEV Party Account"
 BOOKING = "DATEV Booking"
+BATCH = "DATEV Batch"
 OPEN_BOOKING_STATUSES = ("Pending", "Stuck", "Failed")
+INVOICE_KINDS = ("Outgoing Invoice", "Incoming Invoice")
 
 
 def upsert_document(
@@ -18,8 +20,8 @@ def upsert_document(
 	source_key: str,
 	*,
 	direction: str,
-	file_name: str,
-	content: bytes,
+	file_name: str | None = None,
+	content: bytes | None = None,
 	document_date,
 	document_number: str,
 	amount,
@@ -35,6 +37,13 @@ def upsert_document(
 		frappe.throw(_("The source key {0} already belongs to another client.").format(source_key))
 	if existing and existing.status not in ("Pending", "Stuck"):
 		return existing.name
+	has_file = content is not None
+	if not has_file and direction != "Other":
+		frappe.throw(_("Only documents with direction Other can be submitted without a file."))
+	if not has_file and existing and frappe.db.get_value(DOCUMENT, existing.name, "file"):
+		frappe.throw(
+			_("Document {0} already has a file. Submit it again with its file.").format(existing.name)
+		)
 
 	document = frappe.get_doc(DOCUMENT, existing.name) if existing else frappe.new_doc(DOCUMENT)
 	document.update(
@@ -54,14 +63,17 @@ def upsert_document(
 	)
 	internal(document)
 	document.guid = document.guid or new_guid()
-	try:
-		document.document_type = resolve(
-			frappe.get_doc("DATEV Client", client), direction, source_doctype, is_return
-		)
-		document.status, document.message, document.attempts = "Pending", "", 0
-		document.next_attempt = None
-	except DocumentTypeError as error:
-		document.status, document.message = "Stuck", str(error)
+	document.message, document.attempts, document.next_attempt = "", 0, None
+	if not has_file:
+		document.status, document.document_type = "Not Required", None
+	else:
+		try:
+			document.document_type = resolve(
+				frappe.get_doc("DATEV Client", client), direction, source_doctype, is_return
+			)
+			document.status = "Pending"
+		except DocumentTypeError as error:
+			document.status, document.message = "Stuck", str(error)
 	document.save(ignore_permissions=True)
 
 	replace_file(document, file_name, content)
@@ -71,11 +83,14 @@ def upsert_document(
 	return document.name
 
 
-def replace_file(document, file_name: str, content: bytes) -> None:
+def replace_file(document, file_name: str | None, content: bytes | None) -> None:
 	for old in frappe.get_all(
 		"File", filters={"attached_to_doctype": DOCUMENT, "attached_to_name": document.name}, pluck="name"
 	):
 		frappe.delete_doc("File", old, ignore_permissions=True)
+	if content is None:
+		document.db_set("file", None)
+		return
 	file = frappe.get_doc(
 		{
 			"doctype": "File",
@@ -89,15 +104,27 @@ def replace_file(document, file_name: str, content: bytes) -> None:
 	document.db_set("file", file.file_url)
 
 
-def discard_document(source_key: str) -> None:
+def document_by_source_key(source_key: str) -> str:
 	name = frappe.db.get_value(DOCUMENT, {"source_key": source_key}, "name")
 	if not name:
 		frappe.throw(_("No document with source key {0}.").format(source_key), frappe.DoesNotExistError)
+	return name
+
+
+def discard_document(source_key: str) -> None:
+	name = document_by_source_key(source_key)
 	status = frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
 	if status in ("Uploaded", "No Link"):
 		frappe.throw(_("The document is already in DATEV. Create a cancellation invoice instead."))
 	if status == "Discarded":
 		return
+	if frappe.db.exists(BOOKING, {"document": name, "status": ("not in", OPEN_BOOKING_STATUSES)}):
+		frappe.throw(
+			_(
+				"Bookings of document {0} are batched or already in DATEV. "
+				"Discard only its open bookings and add reversal lines instead."
+			).format(name)
+		)
 	frappe.db.set_value(DOCUMENT, name, "status", "Discarded")
 	log_event(DOCUMENT, name, "discarded")
 	for booking in frappe.get_all(
@@ -106,12 +133,38 @@ def discard_document(source_key: str) -> None:
 		frappe.delete_doc("DATEV Booking", booking, ignore_permissions=True)
 
 
+def discard_open_bookings(source_key: str) -> None:
+	name = document_by_source_key(source_key)
+	frappe.db.get_value(DOCUMENT, name, "status", for_update=True)
+	batched = frappe.get_all(
+		BOOKING, filters={"document": name, "status": "Batched"}, fields=["name", "line_key", "batch"]
+	)
+	for row in batched:
+		if frappe.db.get_value(BATCH, row.batch, "status", for_update=True) != "Awaiting Approval":
+			frappe.throw(
+				_("Line {0} is in batch {1}, which is being sent. Try again once the batch is done.").format(
+					row.line_key, row.batch
+				)
+			)
+	open_bookings = frappe.get_all(
+		BOOKING, filters={"document": name, "status": ("in", OPEN_BOOKING_STATUSES)}, pluck="name"
+	)
+	for booking in open_bookings + [row.name for row in batched]:
+		frappe.delete_doc(BOOKING, booking, ignore_permissions=True)
+	for batch in {row.batch for row in batched}:
+		if not frappe.db.exists(BOOKING, {"batch": batch}):
+			frappe.delete_doc(BATCH, batch, ignore_permissions=True)
+	if open_bookings or batched:
+		log_event(DOCUMENT, name, "open_bookings_discarded")
+
+
 def add_booking(
 	document: str,
 	line_key: str,
 	*,
 	kind: str,
-	party_account: str,
+	party_account: str | None = None,
+	account: int | None = None,
 	contra_account: int,
 	amount,
 	debit_credit: str,
@@ -120,6 +173,8 @@ def add_booking(
 	posting_text: str = "",
 	due_date=None,
 	tax_code: str | None = None,
+	depends_on_document: str | None = None,
+	general_reversal: bool = False,
 ) -> str:
 	existing = frappe.db.get_value(
 		BOOKING,
@@ -134,6 +189,8 @@ def add_booking(
 	source = frappe.get_doc(DOCUMENT, document)
 	if source.status == "Discarded":
 		frappe.throw(_("Document {0} is discarded and takes no bookings.").format(document))
+	if source.status == "Not Required" and kind in INVOICE_KINDS:
+		frappe.throw(_("Document {0} has no file and takes no invoice bookings.").format(document))
 	if tax_code:
 		mapped = tax_key(source.client, tax_code)
 		bu_key = bu_key or mapped
@@ -145,6 +202,7 @@ def add_booking(
 			"line_key": line_key,
 			"kind": kind,
 			"party_account": party_account,
+			"account": account,
 			"contra_account": contra_account,
 			"amount": amount,
 			"debit_credit": debit_credit,
@@ -155,6 +213,8 @@ def add_booking(
 			"currency": source.currency,
 			"document_date": source.document_date,
 			"document_field_1": source.document_number,
+			"depends_on_document": depends_on_document,
+			"general_reversal": 1 if general_reversal else 0,
 		}
 	)
 	booking.save(ignore_permissions=True)

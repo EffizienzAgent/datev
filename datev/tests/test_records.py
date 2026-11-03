@@ -45,6 +45,42 @@ class TestRecords(IntegrationTestCase):
 		make_booking(self.document, creditor, kind="Payment", line_key="p1")
 		make_booking(self.document, self.party, kind="Payment", line_key="p2")
 
+	def test_party_or_account_required(self):
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(self.document, self.party, kind="Payment", account=6855, line_key="both")
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(self.document, None, kind="Payment", line_key="neither")
+		make_booking(self.document, None, kind="Payment", account=6855, line_key="account")
+		make_booking(self.document, self.party, kind="Payment", line_key="party")
+
+	def test_account_only_for_payment(self):
+		for kind in ("Outgoing Invoice", "Incoming Invoice"):
+			with self.subTest(kind=kind), self.assertRaises(frappe.ValidationError):
+				make_booking(self.document, None, kind=kind, account=8400, line_key=kind)
+
+	def test_dependency_must_be_other_document_of_client(self):
+		for target in (self.document, make_document(make_client())):
+			with self.subTest(target=target.name), self.assertRaises(frappe.ValidationError):
+				make_booking(self.document, self.party, kind="Payment", depends_on_document=target.name)
+		make_booking(
+			self.document, self.party, kind="Payment", depends_on_document=make_document(self.client).name
+		)
+
+	def test_dependency_cycles_rejected(self):
+		invoice = make_document(self.client)
+		make_booking(invoice, self.party)
+		payment = make_document(self.client, direction="Other")
+		make_booking(payment, self.party, kind="Payment", depends_on_document=invoice.name)
+		other = make_document(self.client, direction="Other")
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(other, self.party, kind="Payment", depends_on_document=payment.name)
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(invoice, self.party, kind="Payment", line_key="p")
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(invoice, self.party, line_key="2", depends_on_document=other.name)
+		make_booking(invoice, self.party, line_key="2")
+		make_booking(other, self.party, kind="Payment", depends_on_document=invoice.name)
+
 	def test_booking_sets_fiscal_year(self):
 		booking = make_booking(self.document, self.party, document_date="2027-01-05")
 		self.assertEqual(booking.fiscal_year, "20270101")

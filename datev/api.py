@@ -46,18 +46,18 @@ def submit_document(
 	client,
 	source_key,
 	direction,
-	file_name,
-	content_base64,
-	document_date,
-	document_number,
-	amount,
+	file_name=None,
+	content_base64=None,
+	document_date=None,
+	document_number=None,
+	amount=None,
 	currency="EUR",
 	is_return=0,
 	source_doctype=None,
 	source_name=None,
 ):
 	_check_access()
-	content = _decode(content_base64)
+	content = _decode(content_base64) if content_base64 else None
 	name = intake.upsert_document(
 		client,
 		source_key,
@@ -105,22 +105,26 @@ def submit_booking(
 	document,
 	line_key,
 	kind,
-	party_account,
-	contra_account,
-	amount,
-	debit_credit,
+	party_account=None,
+	contra_account=None,
+	amount=None,
+	debit_credit=None,
 	tax_rate=0,
 	bu_key="",
 	tax_code=None,
 	posting_text="",
 	due_date=None,
+	account=None,
+	depends_on_document=None,
+	general_reversal=0,
 ):
 	_check_access()
 	name = intake.add_booking(
 		document,
 		line_key,
 		kind=kind,
-		party_account=party_account,
+		party_account=party_account or None,
+		account=_optional_int(account, _("Account")),
 		contra_account=_optional_int(contra_account, _("Contra account")),
 		amount=_decimal(amount, _("Amount")),
 		debit_credit=debit_credit,
@@ -129,6 +133,8 @@ def submit_booking(
 		posting_text=posting_text or "",
 		due_date=due_date or None,
 		tax_code=tax_code or None,
+		depends_on_document=depends_on_document or None,
+		general_reversal=sbool(general_reversal),
 	)
 	return {"name": name, "status": frappe.db.get_value("DATEV Booking", name, "status")}
 

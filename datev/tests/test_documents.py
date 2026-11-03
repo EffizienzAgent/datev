@@ -219,6 +219,38 @@ class TestDocuments(IntegrationTestCase):
 			frappe.db.get_value("DATEV Document", broken, ["status", "message"]), ("Stuck", "boom")
 		)
 
+	def test_document_without_file_not_required(self):
+		name, enqueue = upsert(self.client_doc, direction="Other", file_name=None, content=None)
+		document = frappe.get_doc("DATEV Document", name)
+		self.assertEqual((document.status, document.file), ("Not Required", None))
+		self.assertFalse(
+			frappe.db.exists("File", {"attached_to_doctype": "DATEV Document", "attached_to_name": name})
+		)
+		self.assertEqual(upload_calls(enqueue), [])
+		documents.upload(name)
+		self.assertEqual(FakeStorage.calls, 0)
+		self.assertEqual(upsert(self.client_doc, document.source_key, content=b"late")[0], name)
+		self.assertEqual(frappe.db.get_value("DATEV Document", name, "status"), "Not Required")
+
+	def test_document_without_file_only_for_other(self):
+		for direction in ("Outgoing", "Incoming"):
+			with self.subTest(direction=direction), self.assertRaises(frappe.ValidationError):
+				upsert(self.client_doc, direction=direction, file_name=None, content=None)
+		name, _enqueue = upsert(self.client_doc, "SINV-SAME", direction="Other")
+		file = frappe.db.get_value("DATEV Document", name, "file")
+		with self.assertRaises(frappe.ValidationError):
+			upsert(self.client_doc, "SINV-SAME", direction="Other", file_name=None, content=None)
+		self.assertEqual(frappe.db.get_value("DATEV Document", name, ["status", "file"]), ("Pending", file))
+		self.assertTrue(frappe.db.exists("File", {"file_url": file}))
+
+	def test_document_without_file_takes_no_invoice_bookings(self):
+		name, _enqueue = upsert(self.client_doc, direction="Other", file_name=None, content=None)
+		party = make_party_account(self.client_doc)
+		values = {"party_account": party.name, "contra_account": 1800, "amount": 10, "debit_credit": "H"}
+		with self.assertRaises(frappe.ValidationError):
+			intake.add_booking(name, "1", kind="Outgoing Invoice", **values)
+		intake.add_booking(name, "1", kind="Payment", **values)
+
 	def test_discard_before_upload(self):
 		name, _enqueue = upsert(self.client_doc, "SINV-DISCARD")
 		document = frappe.get_doc("DATEV Document", name)

@@ -1,11 +1,12 @@
 from datetime import datetime, time
+from functools import partial
 from zoneinfo import ZoneInfo
 
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, today
 
-from datev.clients.datevconnect import DATEVconnect, DATEVconnectError, unexpected
+from datev.clients.datevconnect import DATEVconnect, DATEVconnectError, error_message, unexpected
 from datev.connectors.base import (
 	ConnectorError,
 	ExportConnector,
@@ -18,6 +19,7 @@ from datev.extf.format import document_field
 from datev.fiscal import fiscal_year_id
 
 TECHNICAL_GL_LENGTH = 8
+SEQUENCE_DESCRIPTION_LENGTH = 30
 DIRECTIONS = {"Outgoing Invoice": "outgoing", "Incoming Invoice": "incoming"}
 PARTY_FIELDS = {"Outgoing Invoice": "debitor_account_number", "Incoming Invoice": "creditor_account_number"}
 POSITIVE = {("Outgoing Invoice", "S"), ("Incoming Invoice", "H")}
@@ -66,6 +68,39 @@ def proposal_item(booking, document, party_account, client) -> dict:
 		item["document_system"] = document.program_code
 		item["document_link"] = document.external_id.upper()
 	return {key: value for key, value in item.items() if value not in (None, "")}
+
+
+def sequence_record(booking, document, party_account, client) -> dict:
+	factor = technical_factor(client)
+	mappings = {row.source_account: row.datev_account for row in client.account_mappings}
+	if booking.party_account:
+		if not (party_account and party_account.account_number):
+			raise ConnectorError(_("Booking {0} has no party account number.").format(booking.name))
+		account = party_account.account_number
+	else:
+		account = mappings.get(booking.account, booking.account)
+	if not account:
+		raise ConnectorError(_("Booking {0} has no account.").format(booking.name))
+	if not booking.contra_account:
+		raise ConnectorError(_("Booking {0} has no contra account.").format(booking.name))
+	if booking.bu_key and not str(booking.bu_key).isdigit():
+		raise ConnectorError(_("Booking {0} has an invalid BU key.").format(booking.name))
+	record = {
+		"account_number": account * factor,
+		"contra_account_number": mappings.get(booking.contra_account, booking.contra_account) * factor,
+		"amount": flt(booking.amount, 2),
+		"debit_credit_identifier": booking.debit_credit,
+		"date": document_datetime(booking.document_date),
+		"accounting_transaction_key": int(booking.bu_key) if booking.bu_key else None,
+		"document_field1": document_field(booking.document_field_1),
+		"posting_description": (booking.posting_text or "")[:60],
+		"currency_code": booking.currency,
+		"general_reversal": True if booking.general_reversal else None,
+	}
+	if document and document.external_id:
+		record["document_system"] = document.program_code
+		record["document_link"] = document.external_id.upper()
+	return {key: value for key, value in record.items() if value not in (None, "")}
 
 
 def messages(entry: dict) -> str:
@@ -120,8 +155,14 @@ class DATEVconnectMixin:
 
 class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 	def check_booking(self, booking) -> str | None:
+		if booking.kind in DIRECTIONS and booking.general_reversal:
+			return _(
+				"DATEVconnect accepts general reversals only for payments. Send a cancellation invoice instead."
+			)
 		if booking.kind not in DIRECTIONS:
-			return _("Payments are not supported yet")
+			message = self.check_payment(booking)
+			if message:
+				return message
 		years = self.fiscal_years()
 		if isinstance(years, str):
 			return years
@@ -129,6 +170,13 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 			return _("Fiscal year {0} does not exist in DATEV.").format(booking.fiscal_year)
 		if years[booking.fiscal_year]:
 			return _("Fiscal year {0} is locked in DATEV.").format(booking.fiscal_year)
+		return None
+
+	def check_payment(self, booking) -> str | None:
+		if (booking.amount or 0) <= 0:
+			return _("Amount must be greater than zero.")
+		if booking.bu_key and not str(booking.bu_key).isdigit():
+			return _("The BU key {0} is not a number.").format(booking.bu_key)
 		return None
 
 	def fiscal_years(self) -> dict | str:
@@ -158,30 +206,39 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 			raise ConnectorError(str(error), nothing_sent=True) from error
 
 		results = {}
-		groups = {}
+		proposals, sequences = {}, {}
 		for booking in bookings:
+			document, party = documents.get(booking.document), parties.get(booking.party_account)
 			try:
-				if booking.kind not in DIRECTIONS:
-					raise ConnectorError(_("Payments are not supported yet"))
-				item = proposal_item(
-					booking, documents.get(booking.document), parties.get(booking.party_account), self.client
-				)
+				if booking.kind in DIRECTIONS:
+					item = proposal_item(booking, document, party, self.client)
+					key = (booking.fiscal_year, DIRECTIONS[booking.kind])
+					proposals.setdefault(key, []).append((booking, item))
+				else:
+					item = sequence_record(booking, document, party, self.client)
+					key = (booking.fiscal_year, getdate(booking.document_date).strftime("%Y-%m"))
+					sequences.setdefault(key, []).append((booking, item))
 			except ConnectorError as e:
 				results[booking.name] = ExportItemResult(booking.name, False, str(e))
-				continue
-			groups.setdefault((booking.fiscal_year, DIRECTIONS[booking.kind]), []).append((booking, item))
 
+		queue = []
+		for (year, direction), entries in proposals.items():
+			items = [item for _booking, item in entries]
+			queue.append(
+				(entries, partial(api.post_proposals, client_id, year, direction, items), item_results)
+			)
+		for (year, _month), entries in sorted(sequences.items()):
+			payload = sequence(batch, entries)
+			post = partial(api.post_accounting_sequence, client_id, year, payload)
+			queue.append((entries, post, sequence_results))
 		responses = []
 		uncertain = []
-		queue = list(groups.items())
-		for position, ((fiscal_year, direction), entries) in enumerate(queue):
+		for position, (entries, post, map_results) in enumerate(queue):
 			group = [booking for booking, _item in entries]
 			try:
-				response = api.post_proposals(
-					client_id, fiscal_year, direction, [item for _b, item in entries]
-				)
+				response = post()
 				responses.append(response)
-				mapped, unmapped = item_results(group, response)
+				mapped, unmapped = map_results(group, response)
 			except DATEVconnectError as e:
 				responses.append({"error": str(e), "response": e.response})
 				if e.maybe_sent or (e.status or 0) >= 500:
@@ -200,7 +257,7 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 				responses.append({"error": str(e)})
 				uncertain.extend(booking.name for booking in group)
 				not_sent = _("Not sent because an earlier request failed.")
-				for _key, rest in queue[position + 1 :]:
+				for rest, _post, _map in queue[position + 1 :]:
 					results.update({b.name: ExportItemResult(b.name, False, not_sent) for b, _item in rest})
 				break
 			results.update({result.booking: result for result in mapped})
@@ -214,6 +271,23 @@ class DATEVconnectExport(DATEVconnectMixin, ExportConnector):
 	@staticmethod
 	def load(doctype: str, names: set) -> dict:
 		return {name: frappe.get_doc(doctype, name) for name in names if name}
+
+
+def sequence(batch, entries: list) -> dict:
+	dates = [getdate(booking.document_date) for booking, _record in entries]
+	return {
+		"date_from": document_datetime(min(dates)),
+		"date_to": document_datetime(max(dates)),
+		"description": f"{batch.name} {min(dates):%m/%Y}"[:SEQUENCE_DESCRIPTION_LENGTH],
+		"record_type": "financial_accounting",
+		"is_committed": False,
+		"accounting_records": [record for _booking, record in entries],
+	}
+
+
+def sequence_results(bookings: list, response) -> tuple[list[ExportItemResult], list[str]]:
+	message = error_message(response)
+	return [ExportItemResult(booking.name, True, message) for booking in bookings], []
 
 
 class DATEVconnectMasterData(DATEVconnectMixin, MasterDataConnector):
