@@ -14,6 +14,7 @@ PROTECTED = (
 	"account",
 	"contra_account",
 	"document",
+	"document_field_1",
 	"depends_on_document",
 	"general_reversal",
 	"held",

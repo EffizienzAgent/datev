@@ -29,7 +29,12 @@ class TestProtectedFields(IntegrationTestCase):
 
 	def test_desk_save_cannot_change_booking_state(self):
 		other = make_party_account(self.client_doc, account_number=10002)
-		for field, value in (("status", "Transferred"), ("amount", 5), ("party_account", other.name)):
+		for field, value in (
+			("status", "Transferred"),
+			("amount", 5),
+			("party_account", other.name),
+			("document_field_1", "OTHER-1"),
+		):
 			with self.subTest(field=field):
 				doc = frappe.get_doc("DATEV Booking", self.booking.name)
 				doc.set(field, value)
@@ -97,7 +102,16 @@ class TestProtectedFields(IntegrationTestCase):
 		for doctype, fields in (
 			(
 				"DATEV Booking",
-				("status", "batch", "amount", "party_account", "contra_account", "document", "held"),
+				(
+					"status",
+					"batch",
+					"amount",
+					"party_account",
+					"contra_account",
+					"document",
+					"document_field_1",
+					"held",
+				),
 			),
 			("DATEV Batch", ("status",)),
 			("DATEV Document", ("status", "external_id", "guid", "program_code")),

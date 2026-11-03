@@ -108,6 +108,19 @@ class TestDispatch(IntegrationTestCase):
 		self.assertEqual(self.booking(document, amount=50), name)
 		self.assertEqual(frappe.db.get_value("DATEV Booking", name, "amount"), 119)
 
+	def test_document_field_1_per_booking(self):
+		document = self.document(document_number="ZE-7")
+		default = self.booking(document)
+		explicit = self.booking(document, "2", document_field_1="RE-2027-0042")
+		self.assertEqual(frappe.db.get_value("DATEV Booking", default, "document_field_1"), "ZE-7")
+		self.assertEqual(frappe.db.get_value("DATEV Booking", explicit, "document_field_1"), "RE-2027-0042")
+
+		self.assertEqual(self.booking(document, "2", document_field_1="RE-2027-0043"), explicit)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", explicit, "document_field_1"), "RE-2027-0043")
+		frappe.db.set_value("DATEV Booking", explicit, "status", "Transferred")
+		self.assertEqual(self.booking(document, "2", document_field_1="RE-2027-0099"), explicit)
+		self.assertEqual(frappe.db.get_value("DATEV Booking", explicit, "document_field_1"), "RE-2027-0043")
+
 	def test_tax_code_maps_bu_key(self):
 		client = make_client(tax_keys=[{"tax_code": "DE19", "bu_key": "3"}])
 		party = make_party_account(client, preferred_number=10001)

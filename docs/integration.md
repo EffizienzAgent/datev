@@ -70,12 +70,12 @@ upsert_document(client, source_key, *, direction, file_name=None, content=None, 
                 amount, currency="EUR", source_doctype=None, source_name=None, is_return=False) -> str
 add_booking(document, line_key, *, kind, party_account=None, account=None, contra_account, amount, debit_credit,
             tax_rate=0, bu_key="", posting_text="", due_date=None, tax_code=None,
-            depends_on_document=None, general_reversal=False) -> str
+            depends_on_document=None, general_reversal=False, document_field_1=None) -> str
 discard_document(source_key) -> None
 discard_open_bookings(source_key) -> None
 ```
 
-`ensure_party_account` returns the party account name, `upsert_document` and `add_booking` return the document and booking names. `kind` of a party is `Debtor` or `Creditor`; the booking `kind` is `Outgoing Invoice`, `Incoming Invoice` or `Payment`. Amounts are gross and always positive, `debit_credit` is `S` (debit) or `H` (credit). Pass `tax_code` to take the BU key from the client's tax keys, or `bu_key` directly. Payments, dependencies and reversals are described in [concepts](concepts.md#payments).
+`ensure_party_account` returns the party account name, `upsert_document` and `add_booking` return the document and booking names. `kind` of a party is `Debtor` or `Creditor`; the booking `kind` is `Outgoing Invoice`, `Incoming Invoice` or `Payment`. Amounts are gross and always positive, `debit_credit` is `S` (debit) or `H` (credit). Pass `tax_code` to take the BU key from the client's tax keys, or `bu_key` directly. Belegfeld 1 is the document's `document_number` unless `document_field_1` sets it per line (payments use the number of the invoice they clear); it is kept once the booking is transferred. Payments, dependencies and reversals are described in [concepts](concepts.md#payments).
 
 The upload is queued after commit, so call these inside a normal request or job that commits.
 

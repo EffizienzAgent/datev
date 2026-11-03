@@ -175,6 +175,7 @@ def add_booking(
 	tax_code: str | None = None,
 	depends_on_document: str | None = None,
 	general_reversal: bool = False,
+	document_field_1: str | None = None,
 ) -> str:
 	existing = frappe.db.get_value(
 		BOOKING,
@@ -212,7 +213,7 @@ def add_booking(
 			"due_date": due_date,
 			"currency": source.currency,
 			"document_date": source.document_date,
-			"document_field_1": source.document_number,
+			"document_field_1": document_field_1 or source.document_number,
 			"depends_on_document": depends_on_document,
 			"general_reversal": 1 if general_reversal else 0,
 		}
