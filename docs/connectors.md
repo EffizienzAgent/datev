@@ -31,13 +31,15 @@ Resolved per client when a document is created: the first matching rule (directi
 
 | Connector | What it does | Final booking status |
 | --- | --- | --- |
-| DATEVconnect | Posting proposals for outgoing and incoming invoices | Transferred |
+| DATEVconnect | Posting proposals for outgoing and incoming invoices, accounting sequences for payments | Transferred |
 | EXTF download | EXTF files attached to the batch | Exported |
 | EXTF e-mail | As download, plus e-mail to the client's EXTF address | Exported |
 
 ### DATEVconnect
 
-Settings: base URL (for example `https://host:58452/datev/api/accounting/v1`), user name, password, "Verify TLS Certificate" (switch off for self-signed certificates) and the DATEVconnect client ID, which is looked up by client number and saved on first use. One call per direction and fiscal year; the response is evaluated per proposal, and proposals without a readable result count as uncertain. The Beleglink goes as `document_system` (program code) and `document_link` (ID in upper case). Payments are not supported yet: preflight marks them Stuck. Before a batch is built, the fiscal years are read once per run; bookings in a fiscal year that is missing or locked in DATEV become Stuck.
+Settings: base URL (for example `https://host:58452/datev/api/accounting/v1`), user name, password, "Verify TLS Certificate" (switch off for self-signed certificates) and the DATEVconnect client ID, which is looked up by client number and saved on first use. One call per direction and fiscal year; the response is evaluated per proposal, and proposals without a readable result count as uncertain. The Beleglink goes as `document_system` (program code) and `document_link` (ID in upper case). Before a batch is built, the fiscal years are read once per run; bookings in a fiscal year that is missing or locked in DATEV become Stuck.
+
+Payments go to `accounting-sequences` (Buchungsstapel in the batch processing of Rechnungswesen, not committed): one sequence per calendar month and fiscal year of the batch, from the earliest to the latest booking date of that month. Each record carries account (party number or general ledger account) and contra account at technical length, amount, debit/credit for the account, date, Belegfeld 1, posting text, BU key, `general_reversal` and the Beleglink if the document has one. DATEVconnect answers per sequence, not per record: a rejected sequence (4xx) marks all its bookings Failed with DATEV's message, a timeout or server error leaves them uncertain. Preflight therefore checks payment lines strictly: amount above zero, numeric BU key, account and contra account (after mapping) not longer than the client's account length. Posting proposals have no general reversal, so invoice lines with the flag become Stuck; send a cancellation invoice instead.
 
 ### EXTF
 

@@ -12,7 +12,7 @@ It works with any source system through the [intake API](docs/intake-api.md). Fo
 
 ## Status
 
-The first release covers sales invoices (including cancellation invoices) delivered through the intake API or Python, document storage in DATEV Unternehmen online (DUo) via Business OS or by e-mail, and booking export via DATEVconnect or EXTF files (download or e-mail). ERPNext sales invoices arrive through [datev_erpnext](https://github.com/EffizienzAgent/datev_erpnext). Payments, incoming invoices, a generic webhook storage connector and [DocArchive](https://github.com/EffizienzAgent/docarchive) as storage are planned.
+The first release covers sales invoices (including cancellation invoices) delivered through the intake API or Python, document storage in DATEV Unternehmen online (DUo) via Business OS or by e-mail, and booking export via DATEVconnect or EXTF files (download or e-mail). ERPNext sales invoices arrive through [datev_erpnext](https://github.com/EffizienzAgent/datev_erpnext). Release 0.3 adds the core for payments and bank bookings (bookings without party, documents without file, dependencies on invoices, general reversal, DATEVconnect accounting sequences); the ERPNext side follows in the adapter. Incoming invoices, a generic webhook storage connector and [DocArchive](https://github.com/EffizienzAgent/docarchive) as storage are planned.
 
 ## No compliance promise
 
@@ -29,7 +29,8 @@ datev is a technical tool. It does not make you compliant with DATEV requirement
 
 **Bookings and export**
 - [One booking per voucher](docs/concepts.md#data-model) with party account, contra account, BU key and Belegfeld 1.
-- [DATEVconnect](docs/connectors.md#datevconnect) posting proposals and master data.
+- [Payments](docs/concepts.md#payments): bank and cash bookings with or without party, waiting for the invoices they clear, reversed with Generalumkehr.
+- [DATEVconnect](docs/connectors.md#datevconnect) posting proposals, accounting sequences for payments and master data.
 - [EXTF files](docs/extf.md) (Buchungsstapel and Debitoren/Kreditoren) per fiscal year, as download or by e-mail.
 
 **Control**

@@ -62,18 +62,20 @@ A delivery consists of a document (the invoice PDF), the party account it belong
 
 ### From a Frappe app (Python)
 
-`datev.intake` has four functions:
+`datev.intake` has these functions:
 
 ```python
 ensure_party_account(client, kind, *, party_type, party, party_name, vat_id=None, iban=None, preferred_number=None) -> str
-upsert_document(client, source_key, *, direction, file_name, content, document_date, document_number, amount,
-                currency="EUR", source_doctype=None, source_name=None, is_return=False) -> str
-add_booking(document, line_key, *, kind, party_account, contra_account, amount, debit_credit,
-            tax_rate=0, bu_key="", posting_text="", due_date=None, tax_code=None) -> str
+upsert_document(client, source_key, *, direction, file_name=None, content=None, document_date, document_number,
+                amount, currency="EUR", source_doctype=None, source_name=None, is_return=False) -> str
+add_booking(document, line_key, *, kind, party_account=None, account=None, contra_account, amount, debit_credit,
+            tax_rate=0, bu_key="", posting_text="", due_date=None, tax_code=None,
+            depends_on_document=None, general_reversal=False) -> str
 discard_document(source_key) -> None
+discard_open_bookings(source_key) -> None
 ```
 
-`ensure_party_account` returns the party account name, `upsert_document` and `add_booking` return the document and booking names. `kind` of a party is `Debtor` or `Creditor`; the booking `kind` is `Outgoing Invoice`, `Incoming Invoice` or `Payment`. Amounts are gross and always positive, `debit_credit` is `S` (debit) or `H` (credit). Pass `tax_code` to take the BU key from the client's tax keys, or `bu_key` directly.
+`ensure_party_account` returns the party account name, `upsert_document` and `add_booking` return the document and booking names. `kind` of a party is `Debtor` or `Creditor`; the booking `kind` is `Outgoing Invoice`, `Incoming Invoice` or `Payment`. Amounts are gross and always positive, `debit_credit` is `S` (debit) or `H` (credit). Pass `tax_code` to take the BU key from the client's tax keys, or `bu_key` directly. Payments, dependencies and reversals are described in [concepts](concepts.md#payments).
 
 The upload is queued after commit, so call these inside a normal request or job that commits.
 

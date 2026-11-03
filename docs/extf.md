@@ -25,13 +25,13 @@ The app cannot see whether the tax office imported a file. After the export the 
 
 ## Booking lines
 
-One line per booking: amount (always positive) with debit/credit flag, currency, party account as account, contra account (after the client's account mapping), BU key, document date (DDMM), Belegfeld 1, posting text (60 characters) and Beleglink.
+One line per booking: amount (always positive) with debit/credit flag, currency, party account or general ledger account as account, contra account (both after the client's account mapping), BU key, document date (DDMM), Belegfeld 1, posting text (60 characters), Beleglink and "Generalumkehr (GU)" = `1` for general reversal lines.
 
 Belegfeld 1 keeps only characters DATEV allows (letters, digits and `$ & % * + - /`) and at most 36 of them.
 
 ## Beleglink
 
-The Beleglink column contains `BEDI "<GUID>"`, that is program code and external ID of the uploaded document. Without an external ID (e-mail storage) the column stays empty.
+The Beleglink column contains `BEDI "<GUID>"`, that is program code and external ID of the uploaded document. Without an external ID (e-mail storage, payments without file) the column stays empty.
 
 ## Master data import
 
