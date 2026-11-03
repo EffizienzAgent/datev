@@ -36,7 +36,8 @@ class ExtfDownloadExport(ExportConnector):
 		files = booking_batch.build(self.client, bookings, created, batch.name)
 		groups = {}
 		for booking in bookings:
-			groups.setdefault(booking.fiscal_year, set()).add(booking.party_account)
+			if booking.party_account:
+				groups.setdefault(booking.fiscal_year, set()).add(booking.party_account)
 		for fiscal_year, names in sorted(groups.items()):
 			parties = frappe.get_all(
 				"DATEV Party Account",

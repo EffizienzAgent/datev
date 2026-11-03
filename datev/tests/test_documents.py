@@ -219,6 +219,19 @@ class TestDocuments(IntegrationTestCase):
 			frappe.db.get_value("DATEV Document", broken, ["status", "message"]), ("Stuck", "boom")
 		)
 
+	def test_document_without_file_not_required(self):
+		name, enqueue = upsert(self.client_doc, direction="Other", file_name=None, content=None)
+		document = frappe.get_doc("DATEV Document", name)
+		self.assertEqual((document.status, document.file), ("Not Required", None))
+		self.assertFalse(
+			frappe.db.exists("File", {"attached_to_doctype": "DATEV Document", "attached_to_name": name})
+		)
+		self.assertEqual(upload_calls(enqueue), [])
+		documents.upload(name)
+		self.assertEqual(FakeStorage.calls, 0)
+		self.assertEqual(upsert(self.client_doc, document.source_key, content=b"late")[0], name)
+		self.assertEqual(frappe.db.get_value("DATEV Document", name, "status"), "Not Required")
+
 	def test_discard_before_upload(self):
 		name, _enqueue = upsert(self.client_doc, "SINV-DISCARD")
 		document = frappe.get_doc("DATEV Document", name)

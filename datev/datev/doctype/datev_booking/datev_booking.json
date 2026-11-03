@@ -30,6 +30,7 @@
   "line_key",
   "kind",
   "party_account",
+  "account",
   "contra_account",
   "debit_credit",
   "amount",
@@ -83,6 +84,13 @@
    "fieldtype": "Link",
    "label": "Party Account",
    "options": "DATEV Party Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Int",
+   "label": "Account",
+   "description": "General ledger account, for payment lines without a party account",
    "read_only": 1
   },
   {

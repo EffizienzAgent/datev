@@ -18,15 +18,9 @@ BATCH = "DATEV Batch"
 DOCUMENT = "DATEV Document"
 PARTY = "DATEV Party Account"
 DISPATCH_ROLES = ["DATEV User", "DATEV Manager"]
-LINKED_STATUSES = ("Uploaded", "No Link")
-MANDATORY_FIELDS = (
-	"kind",
-	"debit_credit",
-	"party_account",
-	"contra_account",
-	"document_field_1",
-	"document_date",
-)
+LINKED_STATUSES = ("Uploaded", "No Link", "Not Required")
+INVOICE_KINDS = ("Outgoing Invoice", "Incoming Invoice")
+MANDATORY_FIELDS = ("kind", "debit_credit", "contra_account", "document_field_1", "document_date")
 RESETTABLE_STATUSES = ("Transferred", "Exported", "Failed")
 SENT_STATUSES = ("Sent", "Partially Sent")
 JOB_TIMEOUT = 3600
@@ -35,6 +29,8 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 
 def preflight(booking) -> str | None:
 	missing = [_(booking.meta.get_label(field)) for field in MANDATORY_FIELDS if not booking.get(field)]
+	if not (booking.party_account or booking.account):
+		missing.append(_(booking.meta.get_label("party_account")))
 	if missing:
 		return _("Missing fields: {0}").format(", ".join(missing))
 
@@ -46,9 +42,12 @@ def preflight(booking) -> str | None:
 	document = frappe.get_doc(DOCUMENT, booking.document)
 	if document.status not in LINKED_STATUSES:
 		return _("Document {0} is not in DATEV yet (status {1}).").format(document.name, _(document.status))
-	if client.require_document_link and not (document.status == "Uploaded" and document.external_id):
+	needs_link = client.require_document_link and booking.kind in INVOICE_KINDS
+	if needs_link and not (document.status == "Uploaded" and document.external_id):
 		return _("Document {0} has no document link, which this client requires.").format(document.name)
 
+	if not booking.party_account:
+		return None
 	party_account = frappe.get_doc(PARTY, booking.party_account)
 	if not ensure_in_datev(party_account):
 		return _("Party account {0} is not ready: {1}").format(
@@ -353,7 +352,7 @@ def record(batch: str, bookings: list, final_status: str, result) -> None:
 def mark_parties_created(bookings: list, final_status: str) -> None:
 	if final_status != "Exported":
 		return
-	for name in {booking.party_account for booking in bookings}:
+	for name in {booking.party_account for booking in bookings if booking.party_account}:
 		party_account = frappe.get_doc(PARTY, name)
 		if party_account.sync_status == "New":
 			set_status(party_account, "Created", "", "created")

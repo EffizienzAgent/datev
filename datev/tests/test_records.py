@@ -45,6 +45,19 @@ class TestRecords(IntegrationTestCase):
 		make_booking(self.document, creditor, kind="Payment", line_key="p1")
 		make_booking(self.document, self.party, kind="Payment", line_key="p2")
 
+	def test_party_or_account_required(self):
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(self.document, self.party, kind="Payment", account=6855, line_key="both")
+		with self.assertRaises(frappe.ValidationError):
+			make_booking(self.document, None, kind="Payment", line_key="neither")
+		make_booking(self.document, None, kind="Payment", account=6855, line_key="account")
+		make_booking(self.document, self.party, kind="Payment", line_key="party")
+
+	def test_account_only_for_payment(self):
+		for kind in ("Outgoing Invoice", "Incoming Invoice"):
+			with self.subTest(kind=kind), self.assertRaises(frappe.ValidationError):
+				make_booking(self.document, None, kind=kind, account=8400, line_key=kind)
+
 	def test_booking_sets_fiscal_year(self):
 		booking = make_booking(self.document, self.party, document_date="2027-01-05")
 		self.assertEqual(booking.fiscal_year, "20270101")

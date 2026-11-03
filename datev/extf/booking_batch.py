@@ -171,10 +171,13 @@ def _file(client, fiscal_year, bookings, mappings, created, description):
 
 
 def _account_numbers(bookings):
+	names = {booking.party_account for booking in bookings if booking.party_account}
+	if not names:
+		return {}
 	return dict(
 		frappe.get_all(
 			"DATEV Party Account",
-			filters={"name": ("in", {booking.party_account for booking in bookings})},
+			filters={"name": ("in", names)},
 			fields=["name", "account_number"],
 			as_list=True,
 		)
@@ -195,7 +198,10 @@ def _optional_text(value, max_len=None):
 
 
 def _line(booking, account_numbers, documents, mappings):
-	account = account_numbers.get(booking.party_account)
+	if booking.account:
+		account = mappings.get(booking.account, booking.account)
+	else:
+		account = account_numbers.get(booking.party_account)
 	if not account:
 		frappe.throw(_("Booking {0} has no party account number.").format(booking.name))
 	document = documents.get(booking.document)

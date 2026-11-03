@@ -199,6 +199,29 @@ class TestDispatch(IntegrationTestCase):
 		self.assertTrue(check(party_account=blocked))
 		self.assertTrue(check(document_number=""))
 
+	def test_payment_ignores_link_requirement(self):
+		client = make_client(require_document_link=1)
+		party = make_party_account(client, preferred_number=10001)
+
+		def check(kind="Payment", status="Not Required", **values):
+			document = self.document(client, status=status, external_id=None, direction="Other")
+			name = intake.add_booking(
+				document.name,
+				"1",
+				kind=kind,
+				contra_account=1800,
+				amount=50,
+				debit_credit="H",
+				**(values or {"account": 6855}),
+			)
+			return dispatch.preflight(frappe.get_doc("DATEV Booking", name))
+
+		self.assertIsNone(check())
+		self.assertIsNone(check(party_account=party.name))
+		self.assertIsNone(check(status="No Link"))
+		self.assertTrue(check(status="Pending"))
+		self.assertTrue(check(kind="Outgoing Invoice", party_account=party.name))
+
 	def test_collect_creates_batch_awaiting_approval(self):
 		self.client_doc.db_set("approval_required", 1)
 		ready = self.booking()

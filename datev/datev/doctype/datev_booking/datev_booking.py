@@ -6,7 +6,16 @@ from frappe.utils import getdate
 from datev.fiscal import fiscal_year_id
 from datev.protect import reject_manual_changes
 
-PROTECTED = ("status", "batch", "amount", "party_account", "contra_account", "document", "held")
+PROTECTED = (
+	"status",
+	"batch",
+	"amount",
+	"party_account",
+	"account",
+	"contra_account",
+	"document",
+	"held",
+)
 STATE = ("status", "batch", "held")
 PARTY_KINDS = {"Outgoing Invoice": "Debtor", "Incoming Invoice": "Creditor"}
 
@@ -15,6 +24,7 @@ class DATEVBooking(Document):
 	def validate(self):
 		reject_manual_changes(self, PROTECTED, STATE)
 		self.validate_amount()
+		self.validate_party_or_account()
 		self.validate_party_account()
 		self.validate_line_key()
 		self.set_fiscal_year()
@@ -22,6 +32,12 @@ class DATEVBooking(Document):
 	def validate_amount(self):
 		if (self.amount or 0) <= 0:
 			frappe.throw(_("Amount must be greater than zero."))
+
+	def validate_party_or_account(self):
+		if bool(self.party_account) == bool(self.account):
+			frappe.throw(_("A booking needs either a party account or an account, not both."))
+		if self.account and self.kind != "Payment":
+			frappe.throw(_("{0} bookings need a party account.").format(_(self.kind)))
 
 	def validate_party_account(self):
 		if not self.party_account:

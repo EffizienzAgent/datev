@@ -53,7 +53,7 @@ def make_booking(document, party_account, **overrides):
 		"document": document.name,
 		"line_key": "1",
 		"kind": "Outgoing Invoice",
-		"party_account": party_account.name,
+		"party_account": party_account.name if party_account else None,
 		"contra_account": 8400,
 		"debit_credit": "S",
 		"amount": 119,

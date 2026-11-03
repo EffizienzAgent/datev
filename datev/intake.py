@@ -18,8 +18,8 @@ def upsert_document(
 	source_key: str,
 	*,
 	direction: str,
-	file_name: str,
-	content: bytes,
+	file_name: str | None = None,
+	content: bytes | None = None,
 	document_date,
 	document_number: str,
 	amount,
@@ -35,6 +35,7 @@ def upsert_document(
 		frappe.throw(_("The source key {0} already belongs to another client.").format(source_key))
 	if existing and existing.status not in ("Pending", "Stuck"):
 		return existing.name
+	has_file = content is not None
 
 	document = frappe.get_doc(DOCUMENT, existing.name) if existing else frappe.new_doc(DOCUMENT)
 	document.update(
@@ -54,14 +55,17 @@ def upsert_document(
 	)
 	internal(document)
 	document.guid = document.guid or new_guid()
-	try:
-		document.document_type = resolve(
-			frappe.get_doc("DATEV Client", client), direction, source_doctype, is_return
-		)
-		document.status, document.message, document.attempts = "Pending", "", 0
-		document.next_attempt = None
-	except DocumentTypeError as error:
-		document.status, document.message = "Stuck", str(error)
+	document.message, document.attempts, document.next_attempt = "", 0, None
+	if not has_file:
+		document.status, document.document_type = "Not Required", None
+	else:
+		try:
+			document.document_type = resolve(
+				frappe.get_doc("DATEV Client", client), direction, source_doctype, is_return
+			)
+			document.status = "Pending"
+		except DocumentTypeError as error:
+			document.status, document.message = "Stuck", str(error)
 	document.save(ignore_permissions=True)
 
 	replace_file(document, file_name, content)
@@ -71,11 +75,14 @@ def upsert_document(
 	return document.name
 
 
-def replace_file(document, file_name: str, content: bytes) -> None:
+def replace_file(document, file_name: str | None, content: bytes | None) -> None:
 	for old in frappe.get_all(
 		"File", filters={"attached_to_doctype": DOCUMENT, "attached_to_name": document.name}, pluck="name"
 	):
 		frappe.delete_doc("File", old, ignore_permissions=True)
+	if content is None:
+		document.db_set("file", None)
+		return
 	file = frappe.get_doc(
 		{
 			"doctype": "File",
@@ -111,7 +118,8 @@ def add_booking(
 	line_key: str,
 	*,
 	kind: str,
-	party_account: str,
+	party_account: str | None = None,
+	account: int | None = None,
 	contra_account: int,
 	amount,
 	debit_credit: str,
@@ -145,6 +153,7 @@ def add_booking(
 			"line_key": line_key,
 			"kind": kind,
 			"party_account": party_account,
+			"account": account,
 			"contra_account": contra_account,
 			"amount": amount,
 			"debit_credit": debit_credit,

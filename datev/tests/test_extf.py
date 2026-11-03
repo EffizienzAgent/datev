@@ -129,6 +129,18 @@ class TestBookingBatch(IntegrationTestCase):
 			[(h[14], h[15]) for h in headers], [("20261230", "20261230"), ("20270102", "20270102")]
 		)
 
+	def test_extf_account_line(self):
+		document = make_document(self.client, document_date="2027-01-05", status="Not Required")
+		booking = make_booking(
+			document, None, kind="Payment", account=8400, contra_account=1800, debit_credit="H"
+		)
+		line = data_lines(booking_batch.build(self.client, [booking], CREATED, "Bank")[0][1])[0]
+		column = booking_batch.COLUMNS.index
+		self.assertEqual(
+			(line[column("Konto")], line[column("Gegenkonto (ohne BU-Schlüssel)")]), ("4400", "1800")
+		)
+		self.assertEqual(line[column("Beleglink")], "")
+
 	def test_missing_party_account_number_rejected(self):
 		party = make_party_account(self.client)
 		document = make_document(self.client)
