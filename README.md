@@ -1,5 +1,7 @@
 A DATEV integration for the Frappe Framework: bookings with Beleglink, EXTF and DATEVconnect
 
+<img src="docs/images/logo.png" alt="" width="96" align="right">
+
 # DATEV for Frappe
 
 The `datev` app delivers bookings to DATEV complete and with a document link (Beleglink), so the tax office does not have to match receipts by hand. It keeps one booking per voucher, controls when and what is sent, and makes sure nothing is sent twice.
