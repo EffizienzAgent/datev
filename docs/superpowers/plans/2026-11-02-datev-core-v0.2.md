@@ -8,7 +8,7 @@
 
 **Tech Stack:** Frappe v16, Python 3.14, existing dev bench (`dev/compose.yaml`, `dev/test.sh`).
 
-**Spec:** `docs/superpowers/specs/2026-11-02-datev-app-design.md` (goals, anti-goals, duplicate protection, visibility). Review source: `/Users/tobi/Projekte/NORO/docs/datev-offene-punkte.md`.
+**Spec:** `docs/superpowers/specs/2026-11-02-datev-app-design.md` (goals, anti-goals, duplicate protection, visibility). Review source: the pre-go-live review of v0.1.0.
 
 ## Global Constraints
 
