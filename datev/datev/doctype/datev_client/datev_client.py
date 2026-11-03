@@ -62,7 +62,16 @@ class DATEVClient(Document):
 		for row in self.tax_keys:
 			if not BU_KEY_PATTERN.match(row.bu_key or ""):
 				frappe.throw(_("Row {0}: BU key must have at most four digits.").format(row.idx))
-		self.reject_duplicates(self.tax_keys, "tax_code", _("Tax code"))
+		seen = set()
+		for row in self.tax_keys:
+			key = (row.tax_code, row.direction or "Any")
+			if key in seen:
+				frappe.throw(
+					_("Row {0}: Tax code {1} is listed more than once for direction {2}.").format(
+						row.idx, row.tax_code, _(key[1])
+					)
+				)
+			seen.add(key)
 
 	def validate_account_mappings(self):
 		self.reject_duplicates(self.account_mappings, "source_account", _("Source account"))

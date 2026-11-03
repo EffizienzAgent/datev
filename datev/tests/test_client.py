@@ -78,6 +78,23 @@ class TestClient(IntegrationTestCase):
 	def test_duplicate_tax_code_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
 			make_client(tax_keys=[{"tax_code": "A", "bu_key": "9"}, {"tax_code": "A", "bu_key": "8"}])
+		with self.assertRaises(frappe.ValidationError):
+			make_client(
+				tax_keys=[
+					{"tax_code": "A", "direction": "Incoming", "bu_key": "9"},
+					{"tax_code": "A", "direction": "Incoming", "bu_key": "8"},
+				]
+			)
+
+	def test_same_tax_code_per_direction_allowed(self):
+		client = make_client(
+			tax_keys=[
+				{"tax_code": "A", "bu_key": ""},
+				{"tax_code": "A", "direction": "Outgoing", "bu_key": ""},
+				{"tax_code": "A", "direction": "Incoming", "bu_key": "9"},
+			]
+		)
+		self.assertEqual([row.direction for row in client.tax_keys], ["Any", "Outgoing", "Incoming"])
 
 	def test_duplicate_source_account_rejected(self):
 		with self.assertRaises(frappe.ValidationError):

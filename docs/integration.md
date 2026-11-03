@@ -40,7 +40,7 @@ One DATEV Client is one DATEV Mandant. Open **DATEV Client > New**.
    ![Dispatch, approval and numbering](images/client-dispatch.png)
 
 4. **Numbering.** Debtor and creditor numbering: `Source system` (preferred number from the delivering system) or `DATEV next available` (needs DATEVconnect as master data connector). "Match debtors/creditors by number" links an existing DATEV account with the same number if the name or the VAT ID agrees.
-5. **Tax keys.** One row per tax code of your source system with the BU key. Leave the BU key empty for automatic accounts (for example 8400 with 19 %). Every tax code your source system sends needs a row; a booking with an unknown tax code is rejected.
+5. **Tax keys.** One row per tax code of your source system with the BU key. Set the direction to `Outgoing` or `Incoming` when the same tax code needs a different BU key on sales and purchases; a row with direction `Any` applies to every booking that has no row for its own direction (payments only use `Any` rows). Leave the BU key empty for automatic accounts (for example 8400 with 19 %). Every tax code your source system sends needs a row; a booking with an unknown tax code is rejected.
 6. **Account mappings.** Optional: source account to DATEV account, applied to the contra account on export.
 
 Save. Disabled clients receive documents but upload nothing until they are enabled.
@@ -73,9 +73,10 @@ add_booking(document, line_key, *, kind, party_account=None, account=None, contr
             depends_on_document=None, general_reversal=False, document_field_1=None) -> str
 discard_document(source_key) -> None
 discard_open_bookings(source_key) -> None
+tax_key(client, tax_code, direction="Any") -> str | None
 ```
 
-`ensure_party_account` returns the party account name, `upsert_document` and `add_booking` return the document and booking names. `kind` of a party is `Debtor` or `Creditor`; the booking `kind` is `Outgoing Invoice`, `Incoming Invoice` or `Payment`. Amounts are gross and always positive, `debit_credit` is `S` (debit) or `H` (credit). Pass `tax_code` to take the BU key from the client's tax keys, or `bu_key` directly. Belegfeld 1 is the document's `document_number` unless `document_field_1` sets it per line (payments use the number of the invoice they clear); it is kept once the booking is transferred. Payments, dependencies and reversals are described in [concepts](concepts.md#payments).
+`ensure_party_account` returns the party account name, `upsert_document` and `add_booking` return the document and booking names. `kind` of a party is `Debtor` or `Creditor`; the booking `kind` is `Outgoing Invoice`, `Incoming Invoice` or `Payment`. Amounts are gross and always positive, `debit_credit` is `S` (debit) or `H` (credit). Pass `tax_code` to take the BU key from the client's tax keys (the row for the booking's direction, else the `Any` row), or `bu_key` directly. To check a tax code before delivering, call `datev.intake.tax_key(client, tax_code, direction)` with `direction` `Outgoing`, `Incoming` or `Any`; it returns the BU key (empty for automatic accounts) or `None` if the client has no matching row. Belegfeld 1 is the document's `document_number` unless `document_field_1` sets it per line (payments use the number of the invoice they clear); it is kept once the booking is transferred. Payments, dependencies and reversals are described in [concepts](concepts.md#payments).
 
 The upload is queued after commit, so call these inside a normal request or job that commits.
 
