@@ -6,6 +6,16 @@ app_description = (
 )
 app_email = "oss@effizienzagent.de"
 app_license = "mit"
+app_logo_url = "/assets/datev/images/datev-logo.svg"
+
+add_to_apps_screen = [
+	{
+		"name": "datev",
+		"logo": "/assets/datev/images/datev-logo.svg",
+		"title": "DATEV",
+		"route": "/app/datev",
+	}
+]
 
 after_install = "datev.setup.apply_defaults"
 after_migrate = "datev.setup.apply_defaults"
